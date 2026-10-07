@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ứng Dụng Quản Lý & Duyệt Phiếu Tạm Ứng</title>
+  <!-- Google Fonts & Tailwind CSS CDN -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Times+New+Roman&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            serif: ['"Times New Roman"', 'serif']
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #print-area, #print-area * {
+        visibility: visible;
+      }
+      #print-area {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        padding: 0;
+        margin: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      gap: 0.35rem;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col font-sans">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        <!-- Logo & Title -->
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+            <i class="fa-solid fa-file-invoice-dollar text-lg"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-lg font-bold text-slate-900 leading-tight">ADVANCE PAY</h1>
+              <span class="text-xs bg-blue-100 text-blue-800 font-semibold px-2 py-0.5 rounded-full">v2.0 Pro</span>
+            </div>
+            <p class="text-xs text-slate-500">Hệ thống Quản lý & Phê duyệt Phiếu Tạm Ứng Đa Cấp</p>
+          </div>
+        </div>
+
+        <!-- Role Selector & Actions -->
+        <div class="flex items-center space-x-3">
+          <!-- Role Selector -->
+          <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs sm:text-sm">
+            <label class="px-2 text-slate-500 font-medium hidden sm:inline"><i class="fa-solid fa-user-shield mr-1"></i>Vai trò:</label>
+            <select id="userRoleSelect" onchange="changeRole(this.value)" class="bg-white border border-slate-200 text-slate-700 font-semibold rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm cursor-pointer">
+              <option value="NhanVien">👤 Nhân viên (Tạo & xem phiếu)</option>
+              <option value="TruongBoPhan" selected>👔 Trưởng phòng (Duyệt cấp 1)</option>
+              <option value="KeToan">📊 Kế toán (Thẩm định & Chi tiền)</option>
+              <option value="GiamDoc">👑 Ban Giám Đốc (Phê duyệt cấp cao)</option>
+            </select>
+          </div>
+
+          <button onclick="openCreateModal()" class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm px-4 py-2 rounded-xl shadow-md shadow-blue-600/20 transition-all">
+            <i class="fa-solid fa-plus"></i>
+            <span>Tạo Phiếu Tạm Ứng</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <!-- Total Requests -->
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng số phiếu</p>
+          <h3 id="statTotalCount" class="text-2xl font-bold text-slate-800 mt-1">5</h3>
+          <p class="text-xs text-blue-600 font-semibold mt-1">Toàn hệ thống</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-folder-open"></i>
+        </div>
+      </div>
+
+      <!-- Pending Approval -->
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Chờ phê duyệt</p>
+          <h3 id="statPendingCount" class="text-2xl font-bold text-amber-600 mt-1">3</h3>
+          <p class="text-xs text-amber-600 font-semibold mt-1">Cần xử lý gấp</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-hourglass-half"></i>
+        </div>
+      </div>
+
+      <!-- Total Amount Disbursed -->
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Đã giải ngân chi</p>
+          <h3 id="statTotalPaid" class="text-2xl font-bold text-emerald-600 mt-1">9.500.000₫</h3>
+          <p class="text-xs text-emerald-600 font-semibold mt-1">Đã xuất quỹ</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-hand-holding-dollar"></i>
+        </div>
+      </div>
+
+      <!-- Overdue Settlement -->
+      <div class="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Cảnh báo quá hạn</p>
+          <h3 id="statOverdueCount" class="text-2xl font-bold text-rose-600 mt-1">0</h3>
+          <p class="text-xs text-rose-500 font-semibold mt-1">Chưa hoàn ứng</p>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
+      <!-- Search Input -->
+      <div class="relative flex-1">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
+        <input type="text" id="searchInput" oninput="renderTable()" placeholder="Tìm theo mã phiếu, họ tên nhân viên, lý do tạm ứng..." class="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Status Filter Tabs -->
+      <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+        <button onclick="setFilter('ALL')" class="filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-blue-600 text-white" data-status="ALL">Tất cả (<span id="count-all">0</span>)</button>
+        <button onclick="setFilter('CHO_DUYET')" class="filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-700" data-status="CHO_DUYET">Chờ duyệt (<span id="count-choduyet">0</span>)</button>
+        <button onclick="setFilter('DA_DUYET')" class="filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-700" data-status="DA_DUYET">Chờ chi tiền (<span id="count-chocchitien">0</span>)</button>
+        <button onclick="setFilter('DA_CHI')" class="filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-700" data-status="DA_CHI">Đã chi tiền (<span id="count-dachi">0</span>)</button>
+        <button onclick="setFilter('DA_QUYET_TOAN')" class="filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-700" data-status="DA_QUYET_TOAN">Đã hoàn ứng (<span id="count-hoanung">0</span>)</button>
+        <button onclick="setFilter('TU_CHOI')" class="filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-700" data-status="TU_CHOI">Bị từ chối (<span id="count-tuchoi">0</span>)</button>
+      </div>
+    </div>
+
+    <!-- Table Container -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="bg-slate-50/80 border-b border-slate-200 text-xs text-slate-500 font-bold uppercase tracking-wider">
+              <th class="py-3.5 px-4">Mã Phiếu</th>
+              <th class="py-3.5 px-4">Người Đề Nghị</th>
+              <th class="py-3.5 px-4">Lý Do Tạm Ứng</th>
+              <th class="py-3.5 px-4 text-right">Số Tiền</th>
+              <th class="py-3.5 px-4 text-center">Hạn Hoàn Ứng</th>
+              <th class="py-3.5 px-4 text-center">Trạng Thái</th>
+              <th class="py-3.5 px-4 text-center">Thao Tác</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody" class="divide-y divide-slate-100 font-medium">
+            <!-- Dynamic rows will be rendered here -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="hidden py-12 text-center">
+        <div class="w-16 h-16 mx-auto mb-3 text-slate-300">
+          <i class="fa-solid fa-inbox text-5xl"></i>
+        </div>
+        <p class="text-slate-500 font-medium text-base">Không tìm thấy phiếu tạm ứng phù hợp</p>
+        <p class="text-slate-400 text-xs mt-1">Hãy thử tìm từ khóa khác hoặc tạo một phiếu mới</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal: Tạo Phiếu Mới -->
+  <div id="createModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto border border-slate-100 animate-fadeIn">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold">
+            <i class="fa-solid fa-plus"></i>
+          </div>
+          <h2 class="text-lg font-bold text-slate-800">Tạo Giấy Đề Nghị Tạm Ứng Mới</h2>
+        </div>
+        <button onclick="closeCreateModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Modal Form -->
+      <form id="createForm" onsubmit="handleCreateSubmit(event)" class="p-6 space-y-5">
+        <!-- Thông tin người đề nghị -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Họ và tên *</label>
+            <input type="text" id="formHoTen" required value="Nguyễn Văn An" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Bộ phận (Phòng ban) *</label>
+            <select id="formBoPhan" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="Kinh Doanh">Kinh Doanh</option>
+              <option value="Kỹ Thuật">Kỹ Thuật</option>
+              <option value="Hành Chính Nhân Sự">Hành Chính Nhân Sự</option>
+              <option value="Marketing">Marketing</option>
+              <option value="Kế Toán">Kế Toán</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Chức vụ *</label>
+            <input type="text" id="formChucVu" required value="Chuyên viên kinh doanh" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- Lý do & Hạn quyết toán -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="md:col-span-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Mục đích / Lý do tạm ứng *</label>
+            <input type="text" id="formLyDo" required placeholder="VD: Tạm ứng công tác phí thị trường Đà Nẵng 4 ngày..." class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Hạn hoàn ứng (thanh toán) *</label>
+            <input type="date" id="formHanQuyetToan" required class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- Bảng chi tiết các khoản chi -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-bold text-slate-700 uppercase">Chi tiết các hạng mục dự toán *</label>
+            <button type="button" onclick="addLineItem()" class="text-xs text-blue-600 hover:text-blue-700 font-bold flex items-center gap-1">
+              <i class="fa-solid fa-plus-circle"></i> Thêm mục
+            </button>
+          </div>
+          <div class="border border-slate-200 rounded-xl overflow-hidden bg-slate-50">
+            <table class="w-full text-xs">
+              <thead class="bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                <tr>
+                  <th class="p-2 text-left w-1/2">Nội dung chi</th>
+                  <th class="p-2 text-right w-1/3">Số tiền (VNĐ)</th>
+                  <th class="p-2 text-center w-12">Xóa</th>
+                </tr>
+              </thead>
+              <tbody id="lineItemsBody" class="divide-y divide-slate-200 bg-white">
+                <tr>
+                  <td class="p-2">
+                    <input type="text" required placeholder="Hạng mục 1" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs item-name">
+                  </td>
+                  <td class="p-2">
+                    <input type="number" required min="1000" step="1000" placeholder="Số tiền" oninput="calculateTotalForm()" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-right font-semibold item-amount">
+                  </td>
+                  <td class="p-2 text-center">
+                    <button type="button" onclick="removeLineItem(this)" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tổng tiền & Chữ -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-3 flex flex-col md:flex-row md:items-center justify-between gap-2">
+          <div>
+            <span class="text-xs text-slate-600 font-bold uppercase">Tổng số tiền đề nghị:</span>
+            <div id="formTotalDisplay" class="text-xl font-bold text-blue-700">0 VNĐ</div>
+          </div>
+          <div class="text-xs text-slate-600 italic">
+            Bằng chữ: <span id="formTextAmount" class="font-medium text-slate-800">Không đồng chẵn</span>
+          </div>
+        </div>
+
+        <!-- Phương thức nhận tiền -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Hình thức nhận *</label>
+            <select id="formHinhThuc" onchange="toggleBankFields()" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+              <option value="Chuyển khoản">Chuyển khoản ngân hàng</option>
+              <option value="Tiền mặt">Tiền mặt tại thủ quỹ</option>
+            </select>
+          </div>
+          <div id="bankField1">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Số tài khoản</label>
+            <input type="text" id="formSoTK" value="19036888889999" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+          </div>
+          <div id="bankField2">
+            <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Ngân hàng thụ hưởng</label>
+            <input type="text" id="formNganHang" value="Techcombank" class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-blue-500">
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+          <button type="button" onclick="closeCreateModal()" class="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-xl text-sm hover:bg-slate-50">
+            Hủy bỏ
+          </button>
+          <button type="submit" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-blue-500/20">
+            🚀 Nộp Giấy Đề Nghị
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Xem Chi Tiết & Duyệt Phiếu -->
+  <div id="detailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full max-h-[92vh] overflow-y-auto border border-slate-100">
+      <div id="detailModalContent">
+        <!-- Rendered via JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Print Container (Mẫu 03-TT BTC) -->
+  <div id="print-area" class="hidden">
+    <div id="printContent"></div>
+  </div>
+
+  <!-- JavaScript App Logic -->
+  <script>
+    // Dữ liệu ban đầu mô phỏng từ CSV
+    const INITIAL_DATA = [
+      {
+        maPhieu: "TU2610-001",
+        ngayDeNghi: "2026-10-01",
+        emailNhanVien: "nguyenvana@congty.com",
+        hoTenNhanVien: "Nguyễn Văn An",
+        boPhan: "Kinh Doanh",
+        chucVu: "Chuyên viên kinh doanh",
+        soTienTamUng: 5000000,
+        soTienBangChu: "Năm triệu đồng chẵn",
+        lyDoTamUng: "Tạm ứng công tác phí thị trường miền Tây (3 ngày)",
+        hanQuyetToan: "2026-10-10",
+        hinhThucNhan: "Chuyển khoản",
+        soTaiKhoan: "19036888889999",
+        nganHang: "Techcombank",
+        trangThai: "Đã chi tiền",
+        nguoiDuyetCap1: "truongphong_kd@congty.com (Trưởng phòng KD)",
+        ngayDuyetCap1: "2026-10-01 10:15",
+        nguoiDuyetCap2: "ketoan@congty.com (Kế toán)",
+        ngayDuyetCap2: "2026-10-01 14:20",
+        nguoiDuyetCap3: "giamdoc@congty.com (Giám đốc)",
+        ngayDuyetCap3: "2026-10-02 08:30",
+        ngayChiTien: "2026-10-02",
+        nguoiChiTien: "Trần Thị Mai (Thủ quỹ)",
+        items: [
+          { name: "Vé xe khách khứ hồi SG - Cần Thơ", amount: 600000 },
+          { name: "Khách sạn lưu trú 2 đêm", amount: 1400000 },
+          { name: "Phụ cấp công tác 3 ngày", amount: 1500000 },
+          { name: "Chi phí tiếp khách đại lý", amount: 1500000 }
+        ]
+      },
+      {
+        maPhieu: "TU2610-002",
+        ngayDeNghi: "2026-10-03",
+        emailNhanVien: "tranvanb@congty.com",
+        hoTenNhanVien: "Trần Văn Bình",
+        boPhan: "Kỹ Thuật",
+        chucVu: "Kỹ sư phần mềm",
+        soTienTamUng: 12500000,
+        soTienBangChu: "Mười hai triệu năm trăm nghìn đồng chẵn",
+        lyDoTamUng: "Tạm ứng mua thiết bị linh kiện máy chủ dự phòng cho dự án ERP",
+        hanQuyetToan: "2026-10-15",
+        hinhThucNhan: "Chuyển khoản",
+        soTaiKhoan: "0011004567890",
+        nganHang: "Vietcombank",
+        trangThai: "Chờ Giám đốc duyệt",
+        nguoiDuyetCap1: "truongphong_kt@congty.com (Trưởng phòng KT)",
+        ngayDuyetCap1: "2026-10-03 11:00",
+        nguoiDuyetCap2: "ketoan@congty.com (Kế toán)",
+        ngayDuyetCap2: "2026-10-03 16:45",
+        items: [
+          { name: "Ổ cứng Enterprise SSD 2TB Samsung PM883", amount: 7500000 },
+          { name: "Thanh RAM Server DDR4 ECC 32GB", amount: 5000000 }
+        ]
+      },
+      {
+        maPhieu: "TU2610-003",
+        ngayDeNghi: "2026-10-05",
+        emailNhanVien: "lethic@congty.com",
+        hoTenNhanVien: "Lê Thị Cúc",
+        boPhan: "Hành Chính Nhân Sự",
+        chucVu: "Chuyên viên nhân sự",
+        soTienTamUng: 3200000,
+        soTienBangChu: "Ba triệu hai trăm nghìn đồng chẵn",
+        lyDoTamUng: "Tạm ứng chi phí mua quà sinh nhật quý 4 cho CBNV công ty",
+        hanQuyetToan: "2026-10-12",
+        hinhThucNhan: "Tiền mặt",
+        soTaiKhoan: "",
+        nganHang: "",
+        trangThai: "Chờ Kế toán duyệt",
+        nguoiDuyetCap1: "truongphong_hcns@congty.com",
+        ngayDuyetCap1: "2026-10-05 09:30",
+        items: [
+          { name: "Quà sinh nhật 16 nhân viên tháng 10", amount: 3200000 }
+        ]
+      },
+      {
+        maPhieu: "TU2610-004",
+        ngayDeNghi: "2026-10-06",
+        emailNhanVien: "phamvand@congty.com",
+        hoTenNhanVien: "Phạm Văn Dũng",
+        boPhan: "Marketing",
+        chucVu: "Trưởng nhóm Marketing",
+        soTienTamUng: 8000000,
+        soTienBangChu: "Tám triệu đồng chẵn",
+        lyDoTamUng: "Tạm ứng đặt cọc thuê địa điểm tổ chức Workshop ra mắt sản phẩm mới",
+        hanQuyetToan: "2026-10-20",
+        hinhThucNhan: "Chuyển khoản",
+        soTaiKhoan: "102867899999",
+        nganHang: "VietinBank",
+        trangThai: "Chờ Quản lý duyệt",
+        items: [
+          { name: "Đặt cọc sảnh hội trường Workshop 50%", amount: 5000000 },
+          { name: "In ấn backdrop và tài liệu sự kiện", amount: 3000000 }
+        ]
+      },
+      {
+        maPhieu: "TU2610-005",
+        ngayDeNghi: "2026-09-20",
+        emailNhanVien: "hoangvane@congty.com",
+        hoTenNhanVien: "Hoàng Văn Em",
+        boPhan: "Kinh Doanh",
+        chucVu: "Nhân viên kinh doanh",
+        soTienTamUng: 4500000,
+        soTienBangChu: "Bốn triệu năm trăm nghìn đồng chẵn",
+        lyDoTamUng: "Tạm ứng tiếp khách ký kết hợp đồng đại lý Hải Phòng",
+        hanQuyetToan: "2026-09-28",
+        hinhThucNhan: "Chuyển khoản",
+        soTaiKhoan: "970422998877",
+        nganHang: "MB Bank",
+        trangThai: "Đã quyết toán",
+        soTienThucChi: 4250000,
+        tienThuaThieu: 250000,
+        ngayQuyetToan: "2026-09-27",
+        ghiChuQuyetToan: "Đã nộp hóa đơn VAT và hoàn trả quỹ tiền mặt 250.000đ",
+        items: [
+          { name: "Vé máy bay khứ hồi Hà Nội - Hải Phòng", amount: 2000000 },
+          { name: "Bữa trưa làm việc cùng đối tác", amount: 2500000 }
+        ]
+      }
+    ];
+
+    let currentRole = 'TruongBoPhan';
+    let currentFilter = 'ALL';
+    let records = [];
+
+    // Khởi tạo ứng dụng
+    function initApp() {
+      const saved = localStorage.getItem('adv_records_v1');
+      if (saved) {
+        try {
+          records = JSON.parse(saved);
+        } catch(e) {
+          records = [...INITIAL_DATA];
+        }
+      } else {
+        records = [...INITIAL_DATA];
+        saveData();
+      }
+      
+      // Mặc định ngày hoàn ứng là 7 ngày sau
+      const d = new Date();
+      d.setDate(d.getDate() + 7);
+      document.getElementById('formHanQuyetToan').value = d.toISOString().split('T')[0];
+
+      renderTable();
+    }
+
+    function saveData() {
+      localStorage.setItem('adv_records_v1', JSON.stringify(records));
+      updateKpis();
+    }
+
+    function changeRole(role) {
+      currentRole = role;
+      renderTable();
+    }
+
+    function setFilter(status) {
+      currentFilter = status;
+      document.querySelectorAll('.filter-tab').forEach(b => {
+        if (b.dataset.status === status) {
+          b.className = 'filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-blue-600 text-white';
+        } else {
+          b.className = 'filter-tab px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap bg-slate-100 hover:bg-slate-200 text-slate-700';
+        }
+      });
+      renderTable();
+    }
+
+    function formatCurrency(amount) {
+      return Number(amount || 0).toLocaleString('vi-VN') + ' ₫';
+    }
+
+    function getStatusBadge(trangThai) {
+      switch(trangThai) {
+        case 'Chờ Quản lý duyệt':
+          return '<span class="badge-status bg-amber-100 text-amber-800"><i class="fa-solid fa-clock"></i> Chờ Quản lý duyệt</span>';
+        case 'Chờ Kế toán duyệt':
+          return '<span class="badge-status bg-purple-100 text-purple-800"><i class="fa-solid fa-file-invoice"></i> Chờ Kế toán duyệt</span>';
+        case 'Chờ Giám đốc duyệt':
+          return '<span class="badge-status bg-indigo-100 text-indigo-800"><i class="fa-solid fa-crown"></i> Chờ Giám đốc duyệt</span>';
+        case 'Đã duyệt - Chờ chi tiền':
+          return '<span class="badge-status bg-cyan-100 text-cyan-800"><i class="fa-solid fa-money-check"></i> Chờ chi tiền</span>';
+        case 'Đã chi tiền':
+          return '<span class="badge-status bg-blue-100 text-blue-800"><i class="fa-solid fa-hand-holding-dollar"></i> Đã chi tiền</span>';
+        case 'Đã quyết toán':
+          return '<span class="badge-status bg-emerald-100 text-emerald-800"><i class="fa-solid fa-circle-check"></i> Đã hoàn ứng</span>';
+        case 'Từ chối':
+          return '<span class="badge-status bg-rose-100 text-rose-800"><i class="fa-solid fa-circle-xmark"></i> Bị từ chối</span>';
+        default:
+          return `<span class="badge-status bg-slate-100 text-slate-800">${trangThai}</span>`;
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('tableBody');
+      const emptyState = document.getElementById('emptyState');
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+
+      let filtered = records.filter(item => {
+        // Filter by tab
+        if (currentFilter === 'CHO_DUYET') {
+          if (!item.trangThai.includes('Chờ')) return false;
+        } else if (currentFilter === 'DA_DUYET') {
+          if (item.trangThai !== 'Đã duyệt - Chờ chi tiền') return false;
+        } else if (currentFilter === 'DA_CHI') {
+          if (item.trangThai !== 'Đã chi tiền') return false;
+        } else if (currentFilter === 'DA_QUYET_TOAN') {
+          if (item.trangThai !== 'Đã quyết toán') return false;
+        } else if (currentFilter === 'TU_CHOI') {
+          if (item.trangThai !== 'Từ chối') return false;
+        }
+
+        // Search
+        if (search) {
+          const matchMa = item.maPhieu.toLowerCase().includes(search);
+          const matchTen = item.hoTenNhanVien.toLowerCase().includes(search);
+          const matchLyDo = item.lyDoTamUng.toLowerCase().includes(search);
+          const matchBoPhan = item.boPhan.toLowerCase().includes(search);
+          return matchMa || matchTen || matchLyDo || matchBoPhan;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+      } else {
+        emptyState.classList.add('hidden');
+        tbody.innerHTML = filtered.map(item => `
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="py-3.5 px-4 font-bold text-blue-700 whitespace-nowrap">
+              <span class="cursor-pointer hover:underline" onclick="openDetailModal('${item.maPhieu}')">${item.maPhieu}</span>
+              <div class="text-[11px] text-slate-400 font-normal">${item.ngayDeNghi}</div>
+            </td>
+            <td class="py-3.5 px-4 whitespace-nowrap">
+              <div class="font-semibold text-slate-900">${item.hoTenNhanVien}</div>
+              <div class="text-xs text-slate-500">${item.boPhan} • ${item.chucVu}</div>
+            </td>
+            <td class="py-3.5 px-4 max-w-xs">
+              <p class="truncate text-slate-700" title="${item.lyDoTamUng}">${item.lyDoTamUng}</p>
+              <div class="text-[11px] text-slate-400">Hình thức: ${item.hinhThucNhan}</div>
+            </td>
+            <td class="py-3.5 px-4 text-right whitespace-nowrap">
+              <span class="font-bold text-slate-900 text-base">${formatCurrency(item.soTienTamUng)}</span>
+            </td>
+            <td class="py-3.5 px-4 text-center whitespace-nowrap text-xs text-slate-600 font-medium">
+              ${item.hanQuyetToan}
+            </td>
+            <td class="py-3.5 px-4 text-center whitespace-nowrap">
+              ${getStatusBadge(item.trangThai)}
+            </td>
+            <td class="py-3.5 px-4 text-center whitespace-nowrap">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="openDetailModal('${item.maPhieu}')" title="Xem chi tiết & Phê duyệt" class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center text-xs transition-colors">
+                  <i class="fa-solid fa-eye"></i>
+                </button>
+                <button onclick="printSlip('${item.maPhieu}')" title="In Phiếu Mẫu 03-TT" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 flex items-center justify-center text-xs transition-colors">
+                  <i class="fa-solid fa-print"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      updateKpis();
+    }
+
+    function updateKpis() {
+      const total = records.length;
+      const pending = records.filter(r => r.trangThai.includes('Chờ')).length;
+      const paidSum = records.filter(r => r.trangThai === 'Đã chi tiền' || r.trangThai === 'Đã quyết toán')
+                             .reduce((acc, cur) => acc + (cur.soTienTamUng || 0), 0);
+      
+      const today = new Date().toISOString().split('T')[0];
+      const overdue = records.filter(r => r.trangThai === 'Đã chi tiền' && r.hanQuyetToan < today).length;
+
+      document.getElementById('statTotalCount').innerText = total;
+      document.getElementById('statPendingCount').innerText = pending;
+      document.getElementById('statTotalPaid').innerText = formatCurrency(paidSum);
+      document.getElementById('statOverdueCount').innerText = overdue;
+
+      // Tab badges
+      document.getElementById('count-all').innerText = total;
+      document.getElementById('count-choduyet').innerText = pending;
+      document.getElementById('count-chocchitien').innerText = records.filter(r => r.trangThai === 'Đã duyệt - Chờ chi tiền').length;
+      document.getElementById('count-dachi').innerText = records.filter(r => r.trangThai === 'Đã chi tiền').length;
+      document.getElementById('count-hoanung').innerText = records.filter(r => r.trangThai === 'Đã quyết toán').length;
+      document.getElementById('count-tuchoi').innerText = records.filter(r => r.trangThai === 'Từ chối').length;
+    }
+
+    // Modal Create Handlers
+    function openCreateModal() {
+      document.getElementById('createModal').classList.remove('hidden');
+      calculateTotalForm();
+    }
+
+    function closeCreateModal() {
+      document.getElementById('createModal').classList.add('hidden');
+    }
+
+    function addLineItem() {
+      const tbody = document.getElementById('lineItemsBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="p-2">
+          <input type="text" required placeholder="Hạng mục tiếp theo" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs item-name">
+        </td>
+        <td class="p-2">
+          <input type="number" required min="1000" step="1000" placeholder="Số tiền" oninput="calculateTotalForm()" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs text-right font-semibold item-amount">
+        </td>
+        <td class="p-2 text-center">
+          <button type="button" onclick="removeLineItem(this)" class="text-slate-400 hover:text-rose-500"><i class="fa-solid fa-trash"></i></button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    }
+
+    function removeLineItem(btn) {
+      const tbody = document.getElementById('lineItemsBody');
+      if (tbody.children.length <= 1) {
+        alert('Phải có ít nhất 1 hạng mục chi!');
+        return;
+      }
+      btn.closest('tr').remove();
+      calculateTotalForm();
+    }
+
+    function calculateTotalForm() {
+      const amounts = document.querySelectorAll('.item-amount');
+      let sum = 0;
+      amounts.forEach(inp => {
+        sum += Number(inp.value || 0);
+      });
+      document.getElementById('formTotalDisplay').innerText = formatCurrency(sum);
+      document.getElementById('formTextAmount').innerText = docSoThanhChuVN(sum);
+      return sum;
+    }
+
+    function toggleBankFields() {
+      const val = document.getElementById('formHinhThuc').value;
+      const f1 = document.getElementById('bankField1');
+      const f2 = document.getElementById('bankField2');
+      if (val === 'Tiền mặt') {
+        f1.classList.add('hidden');
+        f2.classList.add('hidden');
+      } else {
+        f1.classList.remove('hidden');
+        f2.classList.remove('hidden');
+      }
+    }
+
+    function handleCreateSubmit(e) {
+      e.preventDefault();
+      const total = calculateTotalForm();
+      if (total <= 0) {
+        alert('Tổng số tiền đề nghị phải lớn hơn 0!');
+        return;
+      }
+
+      // Collect line items
+      const items = [];
+      const itemRows = document.querySelectorAll('#lineItemsBody tr');
+      itemRows.forEach(row => {
+        const name = row.querySelector('.item-name').value.trim();
+        const amt = Number(row.querySelector('.item-amount').value || 0);
+        if (name && amt > 0) {
+          items.push({ name, amount: amt });
+        }
+      });
+
+      const today = new Date();
+      const y = today.getFullYear().toString().slice(-2);
+      const m = ('0' + (today.getMonth() + 1)).slice(-2);
+      const randomId = ('000' + (records.length + 1)).slice(-3);
+      const maPhieu = `TU${y}${m}-${randomId}`;
+
+      const newSlip = {
+        maPhieu,
+        ngayDeNghi: today.toISOString().split('T')[0],
+        emailNhanVien: "nhanvien@congty.com",
+        hoTenNhanVien: document.getElementById('formHoTen').value.trim(),
+        boPhan: document.getElementById('formBoPhan').value,
+        chucVu: document.getElementById('formChucVu').value.trim(),
+        soTienTamUng: total,
+        soTienBangChu: docSoThanhChuVN(total),
+        lyDoTamUng: document.getElementById('formLyDo').value.trim(),
+        hanQuyetToan: document.getElementById('formHanQuyetToan').value,
+        hinhThucNhan: document.getElementById('formHinhThuc').value,
+        soTaiKhoan: document.getElementById('formSoTK').value.trim(),
+        nganHang: document.getElementById('formNganHang').value.trim(),
+        trangThai: "Chờ Quản lý duyệt",
+        items
+      };
+
+      records.unshift(newSlip);
+      saveData();
+      closeCreateModal();
+      renderTable();
+      alert(`🎉 Đã nộp giấy đề nghị tạm ứng ${maPhieu} thành công! Đang chuyển đến Trưởng phòng duyệt.`);
+    }
+
+    // Modal Detail & Approval Handlers
+    function openDetailModal(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+
+      const c = document.getElementById('detailModalContent');
+      c.innerHTML = `
+        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white z-10">
+          <div class="flex items-center gap-3">
+            <span class="text-xl font-bold text-slate-800">${item.maPhieu}</span>
+            ${getStatusBadge(item.trangThai)}
+          </div>
+          <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="p-6 space-y-6">
+          <!-- Flow step indicator -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Quy Trình Phê Duyệt</div>
+            <div class="grid grid-cols-5 gap-2 text-center text-xs font-semibold">
+              <div class="p-2 rounded-lg bg-emerald-100 text-emerald-800">
+                1. Tạo phiếu<br><span class="text-[10px] font-normal">Hoàn tất</span>
+              </div>
+              <div class="p-2 rounded-lg ${item.ngayDuyetCap1 ? 'bg-emerald-100 text-emerald-800' : (item.trangThai === 'Chờ Quản lý duyệt' ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-400' : 'bg-slate-200 text-slate-500')}">
+                2. Trưởng phòng<br><span class="text-[10px] font-normal">${item.ngayDuyetCap1 ? 'Đã duyệt' : (item.trangThai === 'Chờ Quản lý duyệt' ? 'Đang chờ' : 'Chưa đến')}</span>
+              </div>
+              <div class="p-2 rounded-lg ${item.ngayDuyetCap2 ? 'bg-emerald-100 text-emerald-800' : (item.trangThai === 'Chờ Kế toán duyệt' ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-400' : 'bg-slate-200 text-slate-500')}">
+                3. Kế toán<br><span class="text-[10px] font-normal">${item.ngayDuyetCap2 ? 'Đã duyệt' : (item.trangThai === 'Chờ Kế toán duyệt' ? 'Đang chờ' : 'Chưa đến')}</span>
+              </div>
+              <div class="p-2 rounded-lg ${item.ngayDuyetCap3 ? 'bg-emerald-100 text-emerald-800' : (item.trangThai === 'Chờ Giám đốc duyệt' ? 'bg-amber-100 text-amber-800 ring-2 ring-amber-400' : 'bg-slate-200 text-slate-500')}">
+                4. Giám đốc<br><span class="text-[10px] font-normal">${item.ngayDuyetCap3 ? 'Đã duyệt' : (item.trangThai === 'Chờ Giám đốc duyệt' ? 'Đang chờ' : 'Chưa đến')}</span>
+              </div>
+              <div class="p-2 rounded-lg ${item.trangThai === 'Đã chi tiền' || item.trangThai === 'Đã quyết toán' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-500'}">
+                5. Chi tiền<br><span class="text-[10px] font-normal">${item.ngayChiTien ? 'Đã chi' : 'Chờ duyệt'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Master Info -->
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl text-xs">
+            <div>
+              <span class="text-slate-400 font-semibold">Người đề nghị:</span>
+              <p class="font-bold text-slate-800 text-sm mt-0.5">${item.hoTenNhanVien}</p>
+            </div>
+            <div>
+              <span class="text-slate-400 font-semibold">Phòng ban:</span>
+              <p class="font-bold text-slate-800 text-sm mt-0.5">${item.boPhan}</p>
+            </div>
+            <div>
+              <span class="text-slate-400 font-semibold">Ngày đề nghị:</span>
+              <p class="font-bold text-slate-800 text-sm mt-0.5">${item.ngayDeNghi}</p>
+            </div>
+            <div>
+              <span class="text-slate-400 font-semibold">Hạn hoàn ứng:</span>
+              <p class="font-bold text-rose-600 text-sm mt-0.5">${item.hanQuyetToan}</p>
+            </div>
+          </div>
+
+          <!-- Reason & Amount -->
+          <div class="space-y-2">
+            <span class="text-xs font-bold text-slate-500 uppercase">Mục đích tạm ứng:</span>
+            <p class="text-slate-800 text-sm bg-white p-3 rounded-xl border border-slate-200">${item.lyDoTamUng}</p>
+          </div>
+
+          <!-- Detail Items Table -->
+          <div>
+            <span class="text-xs font-bold text-slate-500 uppercase mb-2 block">Chi tiết các hạng mục dự toán:</span>
+            <div class="border border-slate-200 rounded-xl overflow-hidden">
+              <table class="w-full text-xs">
+                <thead class="bg-slate-100 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th class="p-2.5 text-center w-12">STT</th>
+                    <th class="p-2.5 text-left">Nội dung chi phí</th>
+                    <th class="p-2.5 text-right w-40">Số tiền</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-medium">
+                  ${(item.items || []).map((it, idx) => `
+                    <tr>
+                      <td class="p-2.5 text-center text-slate-400">${idx + 1}</td>
+                      <td class="p-2.5 text-slate-800">${it.name}</td>
+                      <td class="p-2.5 text-right font-bold text-slate-900">${formatCurrency(it.amount)}</td>
+                    </tr>
+                  `).join('')}
+                  <tr class="bg-blue-50/50 font-bold text-slate-900 border-t border-slate-200">
+                    <td colspan="2" class="p-3 text-right">TỔNG CỘNG:</td>
+                    <td class="p-3 text-right text-blue-700 text-sm">${formatCurrency(item.soTienTamUng)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="text-xs text-slate-500 italic mt-1.5">Bằng chữ: <strong class="text-slate-700">${item.soTienBangChu}</strong></p>
+          </div>
+
+          <!-- Banking & VietQR -->
+          ${item.hinhThucNhan === 'Chuyển khoản' && item.soTaiKhoan ? `
+            <div class="bg-indigo-50 border border-indigo-100 p-4 rounded-xl flex items-center justify-between">
+              <div>
+                <span class="text-xs font-bold text-indigo-900 uppercase">Tài khoản nhận tiền:</span>
+                <p class="text-sm font-bold text-indigo-950 mt-1">${item.nganHang} - ${item.soTaiKhoan}</p>
+                <p class="text-xs text-indigo-700 mt-0.5">Chủ TK: ${item.hoTenNhanVien.toUpperCase()}</p>
+              </div>
+              <div class="text-right">
+                <a href="https://img.vietqr.io/image/${item.nganHang}-${item.soTaiKhoan}-compact2.png?amount=${item.soTienTamUng}&addInfo=${item.maPhieu}" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-semibold hover:bg-indigo-700 shadow-sm">
+                  <i class="fa-solid fa-qrcode"></i> Quét VietQR Chi Tiền
+                </a>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Action Buttons According to Current Role & Status -->
+          <div class="pt-4 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+            <button onclick="printSlip('${item.maPhieu}')" class="px-4 py-2 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2">
+              <i class="fa-solid fa-print"></i> In Mẫu Số 03-TT BTC
+            </button>
+
+            <div class="flex items-center gap-2">
+              <!-- Rejection button -->
+              ${item.trangThai.includes('Chờ') ? `
+                <button onclick="handleReject('${item.maPhieu}')" class="px-4 py-2 bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 rounded-xl text-xs font-bold transition-all">
+                  ❌ Từ Chối Phiếu
+                </button>
+              ` : ''}
+
+              <!-- Stage 1: Truong Phong Approval -->
+              ${item.trangThai === 'Chờ Quản lý duyệt' && (currentRole === 'TruongBoPhan' || currentRole === 'GiamDoc') ? `
+                <button onclick="handleApproveStep1('${item.maPhieu}')" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20">
+                  ✅ Trưởng Phòng Duyệt
+                </button>
+              ` : ''}
+
+              <!-- Stage 2: Ke Toan Approval -->
+              ${item.trangThai === 'Chờ Kế toán duyệt' && (currentRole === 'KeToan' || currentRole === 'GiamDoc') ? `
+                <button onclick="handleApproveStep2('${item.maPhieu}')" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20">
+                  📋 Kế Toán Thẩm Định Xong
+                </button>
+              ` : ''}
+
+              <!-- Stage 3: Giam Doc Approval -->
+              ${item.trangThai === 'Chờ Giám đốc duyệt' && currentRole === 'GiamDoc' ? `
+                <button onclick="handleApproveStep3('${item.maPhieu}')" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20">
+                  👑 Giám Đốc Phê Duyệt Chi
+                </button>
+              ` : ''}
+
+              <!-- Stage 4: Chi Tien -->
+              ${item.trangThai === 'Đã duyệt - Chờ chi tiền' && (currentRole === 'KeToan' || currentRole === 'GiamDoc') ? `
+                <button onclick="handleDisburse('${item.maPhieu}')" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-500/20">
+                  💵 Xác Nhận Đã Xuất Quỹ Chi Tiền
+                </button>
+              ` : ''}
+
+              <!-- Stage 5: Quyet Toan Hoan Ung -->
+              ${item.trangThai === 'Đã chi tiền' ? `
+                <button onclick="handleSettleModal('${item.maPhieu}')" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-500/20">
+                  🧾 Quyết Toán Hoàn Ứng
+                </button>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detailModal').classList.add('hidden');
+    }
+
+    // Approval Handlers
+    function handleApproveStep1(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+      item.trangThai = "Chờ Kế toán duyệt";
+      item.nguoiDuyetCap1 = "truongphong@congty.com";
+      item.ngayDuyetCap1 = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      saveData();
+      renderTable();
+      openDetailModal(maPhieu);
+    }
+
+    function handleApproveStep2(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+      item.trangThai = "Chờ Giám đốc duyệt";
+      item.nguoiDuyetCap2 = "ketoan@congty.com";
+      item.ngayDuyetCap2 = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      saveData();
+      renderTable();
+      openDetailModal(maPhieu);
+    }
+
+    function handleApproveStep3(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+      item.trangThai = "Đã duyệt - Chờ chi tiền";
+      item.nguoiDuyetCap3 = "giamdoc@congty.com";
+      item.ngayDuyetCap3 = new Date().toISOString().replace('T', ' ').slice(0, 16);
+      saveData();
+      renderTable();
+      openDetailModal(maPhieu);
+    }
+
+    function handleDisburse(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+      item.trangThai = "Đã chi tiền";
+      item.ngayChiTien = new Date().toISOString().split('T')[0];
+      item.nguoiChiTien = "Thủ Quỹ Công Ty";
+      saveData();
+      renderTable();
+      openDetailModal(maPhieu);
+    }
+
+    function handleReject(maPhieu) {
+      const reason = prompt('Nhập lý do từ chối phiếu tạm ứng:');
+      if (reason === null) return;
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+      item.trangThai = "Từ chối";
+      item.lyDoTuChoi = reason || "Không đạt yêu cầu phê duyệt";
+      saveData();
+      renderTable();
+      openDetailModal(maPhieu);
+    }
+
+    function handleSettleModal(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+      const thucChiStr = prompt(`Nhập số tiền thực tế đã chi theo hóa đơn (VNĐ):\n(Đã tạm ứng: ${formatCurrency(item.soTienTamUng)})`, item.soTienTamUng);
+      if (!thucChiStr) return;
+      const thucChi = Number(thucChiStr);
+      item.trangThai = "Đã quyết toán";
+      item.soTienThucChi = thucChi;
+      item.tienThuaThieu = item.soTienTamUng - thucChi;
+      item.ngayQuyetToan = new Date().toISOString().split('T')[0];
+      item.ghiChuQuyetToan = `Đã thanh quyết toán. Tiền thừa/thiếu: ${formatCurrency(item.tienThuaThieu)}`;
+      saveData();
+      renderTable();
+      openDetailModal(maPhieu);
+    }
+
+    // Print Slip (Mẫu 03-TT)
+    function printSlip(maPhieu) {
+      const item = records.find(r => r.maPhieu === maPhieu);
+      if (!item) return;
+
+      const dateParts = item.ngayDeNghi.split('-');
+      const y = dateParts[0];
+      const m = dateParts[1];
+      const d = dateParts[2];
+
+      const html = `
+        <div style="font-family: 'Times New Roman', serif; font-size: 13pt; color: #000; padding: 25px; line-height: 1.4;">
+          <table style="width: 100%; margin-bottom: 10px;">
+            <tr>
+              <td style="width: 60%; vertical-align: top;">
+                <strong>CÔNG TY CỔ PHẦN CÔNG NGHỆ & THƯƠNG MẠI</strong><br>
+                <span>Địa chỉ: Tầng 5, Tòa nhà Innovation, TP. Hồ Chí Minh</span><br>
+                <span>Bộ phận: <strong>${item.boPhan}</strong></span>
+              </td>
+              <td style="width: 40%; text-align: center; vertical-align: top;">
+                <strong>Mẫu số 03 - TT</strong><br>
+                <span style="font-size: 10pt; font-style: italic;">(Ban hành theo Thông tư 200/2014/TT-BTC & TT 133/2016/TT-BTC)</span><br>
+                <span style="font-weight: bold; font-size: 11pt;">Số: ${item.maPhieu}</span>
+              </td>
+            </tr>
+          </table>
+
+          <div style="text-align: center; margin: 25px 0 15px 0;">
+            <h2 style="margin: 0; font-size: 18pt; text-transform: uppercase; font-weight: bold;">PHIẾU TẠM ỨNG</h2>
+            <p style="margin: 5px 0 0 0; font-style: italic; font-size: 11pt;">Ngày ${d} tháng ${m} năm ${y}</p>
+          </div>
+
+          <div style="margin: 8px 0;">- Họ và tên người đề nghị tạm ứng: <strong>${item.hoTenNhanVien}</strong></div>
+          <div style="margin: 8px 0;">- Bộ phận (Phòng ban): <strong>${item.boPhan}</strong> &nbsp;&nbsp;&nbsp;&nbsp; - Chức vụ: <strong>${item.chucVu}</strong></div>
+          <div style="margin: 8px 0;">- Số tiền tạm ứng: <strong style="font-size: 14pt;">${formatCurrency(item.soTienTamUng)}</strong></div>
+          <div style="margin: 8px 0;">- Viết bằng chữ: <em>${item.soTienBangChu}</em></div>
+          <div style="margin: 8px 0;">- Lý do tạm ứng: ${item.lyDoTamUng}</div>
+          <div style="margin: 8px 0;">- Thời hạn thanh toán hoàn ứng: <strong>${item.hanQuyetToan}</strong></div>
+          <div style="margin: 8px 0;">- Hình thức nhận: <strong>${item.hinhThucNhan}</strong> ${item.soTaiKhoan ? `(Số TK: ${item.soTaiKhoan} - ${item.nganHang})` : ''}</div>
+
+          <div style="margin-top: 15px; font-weight: bold;">Bảng kê chi tiết các khoản dự toán:</div>
+          <table style="width: 100%; border-collapse: collapse; margin: 10px 0 20px 0;">
+            <thead>
+              <tr style="background: #f3f4f6;">
+                <th style="border: 1px solid #000; padding: 6px; width: 8%; text-align: center;">STT</th>
+                <th style="border: 1px solid #000; padding: 6px; text-align: left;">Hạng mục chi</th>
+                <th style="border: 1px solid #000; padding: 6px; width: 25%; text-align: right;">Số tiền</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(item.items || []).map((it, idx) => `
+                <tr>
+                  <td style="border: 1px solid #000; padding: 6px; text-align: center;">${idx + 1}</td>
+                  <td style="border: 1px solid #000; padding: 6px;">${it.name}</td>
+                  <td style="border: 1px solid #000; padding: 6px; text-align: right; font-weight: bold;">${formatCurrency(it.amount)}</td>
+                </tr>
+              `).join('')}
+              <tr style="font-weight: bold;">
+                <td colspan="2" style="border: 1px solid #000; padding: 6px; text-align: right;">CỘNG:</td>
+                <td style="border: 1px solid #000; padding: 6px; text-align: right; color: #b91c1c;">${formatCurrency(item.soTienTamUng)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table style="width: 100%; margin-top: 35px; text-align: center; page-break-inside: avoid;">
+            <tr>
+              <td style="vertical-align: top; width: 20%;">
+                <div style="font-weight: bold;">Giám đốc</div>
+                <div style="font-style: italic; font-size: 10pt;">(Ký, họ tên)</div>
+                <div style="height: 60px;"></div>
+                <div><strong>${item.nguoiDuyetCap3 ? 'Ban Giám Đốc' : ''}</strong></div>
+              </td>
+              <td style="vertical-align: top; width: 20%;">
+                <div style="font-weight: bold;">Kế toán trưởng</div>
+                <div style="font-style: italic; font-size: 10pt;">(Ký, họ tên)</div>
+                <div style="height: 60px;"></div>
+                <div><strong>${item.nguoiDuyetCap2 ? 'Phòng Kế Toán' : ''}</strong></div>
+              </td>
+              <td style="vertical-align: top; width: 20%;">
+                <div style="font-weight: bold;">Trưởng bộ phận</div>
+                <div style="font-style: italic; font-size: 10pt;">(Ký, họ tên)</div>
+                <div style="height: 60px;"></div>
+                <div><strong>${item.nguoiDuyetCap1 ? 'Trưởng Phòng' : ''}</strong></div>
+              </td>
+              <td style="vertical-align: top; width: 20%;">
+                <div style="font-weight: bold;">Thủ quỹ</div>
+                <div style="font-style: italic; font-size: 10pt;">(Ký, họ tên)</div>
+                <div style="height: 60px;"></div>
+                <div><strong>${item.nguoiChiTien || ''}</strong></div>
+              </td>
+              <td style="vertical-align: top; width: 20%;">
+                <div style="font-weight: bold;">Người tạm ứng</div>
+                <div style="font-style: italic; font-size: 10pt;">(Ký, họ tên)</div>
+                <div style="height: 60px;"></div>
+                <div><strong>${item.hoTenNhanVien}</strong></div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `;
+
+      document.getElementById('printContent').innerHTML = html;
+      const printArea = document.getElementById('print-area');
+      printArea.classList.remove('hidden');
+      window.print();
+      printArea.classList.add('hidden');
+    }
+
+    // Vietnamese Number to Words
+    function docSoThanhChuVN(so) {
+      if (!so || isNaN(so) || so === 0) return 'Không đồng';
+      const chuSo = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+      const tien = ['', 'nghìn', 'triệu', 'tỷ', 'nghìn tỷ'];
+
+      function doc3So(n, dayDu) {
+        let c = Math.floor(n / 100);
+        let chuc = Math.floor((n % 100) / 10);
+        let donVi = n % 10;
+        let str = '';
+
+        if (c > 0 || dayDu) str += chuSo[c] + ' trăm ';
+        if (chuc > 1) {
+          str += chuSo[chuc] + ' mươi ';
+          if (donVi === 1) str += 'mốt ';
+          else if (donVi === 5) str += 'lăm ';
+          else if (donVi > 0) str += chuSo[donVi] + ' ';
+        } else if (chuc === 1) {
+          str += 'mười ';
+          if (donVi === 5) str += 'lăm ';
+          else if (donVi > 0) str += chuSo[donVi] + ' ';
+        } else if (chuc === 0) {
+          if (c > 0 && donVi > 0) str += 'lẻ ';
+          if (donVi > 0) str += chuSo[donVi] + ' ';
+        }
+        return str.trim();
+      }
+
+      let block = [];
+      let temp = Math.floor(so);
+      while (temp > 0) {
+        block.push(temp % 1000);
+        temp = Math.floor(temp / 1000);
+      }
+
+      let ketQua = '';
+      for (let i = block.length - 1; i >= 0; i--) {
+        let n = block[i];
+        if (n > 0) {
+          let s = doc3So(n, i < block.length - 1);
+          ketQua += s + ' ' + tien[i] + ' ';
+        }
+      }
+      ketQua = ketQua.trim();
+      if (!ketQua) return 'Không đồng';
+      ketQua = ketQua.charAt(0).toUpperCase() + ketQua.slice(1) + ' đồng chẵn';
+      return ketQua.replace(/\s+/g, ' ');
+    }
+
+    // Start App
+    window.addEventListener('DOMContentLoaded', initApp);
+  </script>
+</body>
+</html>
