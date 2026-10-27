@@ -1,11 +1,13 @@
 /**
  * =========================================================================
- * GOOGLE APPS SCRIPT - HỆ THỐNG GỬI EMAIL TỰ ĐỘNG & DUYỆT PHIẾU TẠM ỨNG
+ * GOOGLE APPS SCRIPT - HỆ THỐNG GỬI EMAIL TỰ ĐỘNG THEO ĐÚNG QUY TRÌNH THỰC TẾ
  * =========================================================================
- * - Tự động tìm cột thông minh theo Tiêu đề (Không sợ lệch cột)
- * - Tự động thêm cột TrangThaiDaGuiMail nếu chưa có
- * - Gửi email chính xác tới: gnasche.ai@gmail.com, ducvuongggnguyen@gmail.com, phuongnt.work28@gmail.com...
- * - Có nút "Quét & Gửi Ngay" kèm báo cáo chi tiết gửi cho ai
+ * QUY TRÌNH DUYỆT 5 BƯỚC:
+ * 1. Nhân viên lập phiếu -> Gửi Kế toán kiểm tra (Chờ Kế toán duyệt)
+ * 2. Kế toán duyệt -> Gửi Bạn phụ trách để trình Sếp (Kế toán đã duyệt - Chờ trình Sếp)
+ * 3. Bạn bấm Trình Sếp -> Gửi Sếp xem xét (Chờ Sếp duyệt)
+ * 4. Sếp phê duyệt -> Báo Bạn in phiếu giấy Mẫu 03-TT đưa Kế toán (Sếp đã duyệt - Chờ in phiếu)
+ * 5. Bạn chuyển Kế toán -> Kế toán xuất tiền mặt / chuyển khoản (Đã xuất tiền)
  * =========================================================================
  */
 
@@ -25,8 +27,8 @@ function onOpen() {
     .addItem('🧪 Test gửi 1 email thử nghiệm (Nhập email bất kỳ)', 'guiEmailTestNgayLapTuc')
     .addItem('🔍 Chẩn đoán chi tiết hệ thống & Email người nhận', 'chanDoanChiTietHeThong')
     .addSeparator()
-    .addItem('🎨 Định dạng bảng tính & Kẻ bảng', 'dinhDangGiaoDienTrangTinh')
     .addItem('🖨️ Xuất mẫu in Phiếu đang chọn (Mẫu 03-TT)', 'xuatMauInPhieuHienTai')
+    .addItem('🎨 Định dạng bảng tính đẹp', 'dinhDangGiaoDienTrangTinh')
     .addToUi();
 }
 
@@ -51,19 +53,23 @@ function caiDatTriggerTuDong() {
     .onChange()
     .create();
 
-  // Chạy quét ngay 1 lần
+  // Quét gửi ngay
   var ketQua = xuLyKiemTraVaGuiEmail(false);
   
   SpreadsheetApp.getUi().alert(
-    '🎉 ĐÃ KÍCH HOẠT TỰ ĐỘNG GỬI EMAIL THÀNH CÔNG!\n\n' +
-    'Từ bây giờ, bất cứ khi nào bạn thao tác trên AppSheet:\n' +
-    '-> Google Apps Script sẽ tự động nhận diện và gửi email tới người duyệt tương ứng.\n\n' +
+    '🎉 ĐÃ KÍCH HOẠT QUY TRÌNH GỬI EMAIL TỰ ĐỘNG THÀNH CÔNG!\n\n' +
+    'Quy trình vận hành:\n' +
+    '1. Nvien tạo phiếu ➔ Gửi Kế toán\n' +
+    '2. Kế toán duyệt ➔ Gửi Bạn để Trình Sếp\n' +
+    '3. Bạn Trình Sếp ➔ Gửi Sếp\n' +
+    '4. Sếp duyệt ➔ Báo Bạn in phiếu đưa Kế toán\n' +
+    '5. Kế toán xuất tiền ➔ Báo Nhân viên nhận tiền\n\n' +
     'Kết quả quét hiện tại:\n' + ketQua
   );
 }
 
 /**
- * Hàm trigger chạy ngầm khi có thay đổi từ AppSheet
+ * Hàm trigger ngầm khi có thay đổi từ AppSheet
  */
 function xuLyKhiCoThayDoi(e) {
   try {
@@ -79,11 +85,11 @@ function xuLyKhiCoThayDoi(e) {
  */
 function chayGuiEmailNgayLapTuc() {
   var ketQua = xuLyKiemTraVaGuiEmail(true);
-  SpreadsheetApp.getUi().alert('📋 KẾT QUẢ QUÉT & GỬI EMAIL:\n\n' + ketQua);
+  SpreadsheetApp.getUi().alert('📋 KẾT QUẢ QUÉT & GỬI EMAIL THEO QUY TRÌNH MỚI:\n\n' + ketQua);
 }
 
 /**
- * HÀM XỬ LÝ CHÍNH: TÌM CỘT THÔNG MINH VÀ GỬI EMAIL
+ * HÀM XỬ LÝ CHÍNH: QUÉT & GỬI EMAIL ĐÚNG THEO QUY TRÌNH 5 BƯỚC
  */
 function xuLyKiemTraVaGuiEmail(laThuCong) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -94,19 +100,19 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
   if (!sheetNV) return '❌ Không tìm thấy trang tính DANH_MUC_NHAN_VIEN!';
 
   var lastRow = sheetPhieu.getLastRow();
-  if (lastRow < 2) return 'ℹ️ Bảng PHIEU_TAM_UNG chưa có dữ liệu phiếu nào.';
+  if (lastRow < 2) return 'ℹ️ Bảng PHIEU_TAM_UNG chưa có dòng dữ liệu nào.';
 
-  // Đọc Header dòng 1 để xác định vị trí cột động
+  // Đọc Header dòng 1
   var maxCol = sheetPhieu.getMaxColumns();
   var headerRange = sheetPhieu.getRange(1, 1, 1, sheetPhieu.getLastColumn()).getValues()[0];
   
   var colMap = {};
   for (var c = 0; c < headerRange.length; c++) {
     var hName = (headerRange[c] || '').toString().trim();
-    if (hName) colMap[hName] = c + 1; // 1-indexed
+    if (hName) colMap[hName] = c + 1;
   }
 
-  // Kiểm tra cột TrangThaiDaGuiMail, nếu chưa có thì tự động tạo ở cột kế tiếp
+  // Tự động tạo cột TrangThaiDaGuiMail nếu chưa có
   var colGuiMail = colMap['TrangThaiDaGuiMail'];
   if (!colGuiMail) {
     var newColIdx = sheetPhieu.getLastColumn() + 1;
@@ -118,7 +124,7 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
     colMap['TrangThaiDaGuiMail'] = newColIdx;
   }
 
-  // Lấy vị trí các cột quan trọng
+  // Lấy vị trí cột
   var colMaPhieu = colMap['MaPhieu'] || 1;
   var colEmailNV = colMap['EmailNhanVien'] || 3;
   var colHoTenNV = colMap['HoTenNhanVien'] || 4;
@@ -126,15 +132,14 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
   var colSoTien = colMap['SoTienTamUng'] || 7;
   var colLyDo = colMap['LyDoTamUng'] || 9;
   var colHanQT = colMap['HanQuyetToan'] || 10;
-  var colHinhThuc = colMap['HinhThucNhan'] || 11;
   var colSoTK = colMap['SoTaiKhoan'] || 12;
   var colNganHang = colMap['NganHang'] || 13;
   var colTrangThai = colMap['TrangThai'] || 16;
 
-  // Lấy dữ liệu nhân viên
+  // Lấy danh bạ email
   var mapNV = layBanDoNhanVien(sheetNV);
 
-  // Đọc toàn bộ bảng phiếu
+  // Đọc dữ liệu
   var dataRows = sheetPhieu.getRange(2, 1, lastRow - 1, sheetPhieu.getLastColumn()).getValues();
   var soLuongDaGui = 0;
   var chiTietGui = [];
@@ -156,105 +161,157 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
     var trangThaiHienTai = (row[colTrangThai - 1] || '').toString().trim();
     var trangThaiDaGui = (row[colGuiMail - 1] || '').toString().trim();
 
-    // Nếu trạng thái chưa được gửi mail
+    // Nếu trạng thái chưa gửi mail
     if (trangThaiHienTai !== '' && trangThaiHienTai !== trangThaiDaGui) {
-      var dsNhan = xacDinhDanhSachNguoiNhan(trangThaiHienTai, emailNV, mapNV);
+      var ketQuaGui = xuLyGuiEmailQuyTrinhMoi(
+        trangThaiHienTai, 
+        maPhieu, 
+        emailNV, 
+        hoTenNV, 
+        boPhan, 
+        soTien, 
+        lyDo, 
+        hanQT, 
+        soTK, 
+        nganHang, 
+        mapNV
+      );
 
-      if (dsNhan.length > 0) {
-        var tieuDeMail = taoTieuDeMail(trangThaiHienTai, maPhieu, hoTenNV, soTien);
-        var htmlContent = taoNoiDungHtmlEmail(trangThaiHienTai, maPhieu, hoTenNV, boPhan, soTien, lyDo, hanQT, soTK, nganHang);
-
-        for (var k = 0; k < dsNhan.length; k++) {
-          var targetEmail = dsNhan[k];
-          try {
-            GmailApp.sendEmail(targetEmail, tieuDeMail, '', {
-              htmlBody: htmlContent,
-              name: TEN_CONG_TY
-            });
-            Logger.log(`✅ [GỬI THÀNH CÔNG] Phiếu ${maPhieu} -> ${targetEmail}`);
-            chiTietGui.push(`• Phiếu ${maPhieu} (${trangThaiHienTai}) ➔ ${targetEmail}`);
-            soLuongDaGui++;
-          } catch (err) {
-            Logger.log(`❌ [LỖI GỬI] ${targetEmail}: ${err.toString()}`);
-            chiTietGui.push(`• Lỗi gửi tới ${targetEmail}: ${err.toString()}`);
-          }
-        }
-
-        // Cập nhật lại cột đã gửi
+      if (ketQuaGui.thanhCong) {
         sheetPhieu.getRange(rowIndex, colGuiMail).setValue(trangThaiHienTai);
+        soLuongDaGui += ketQuaGui.soNguoiNhan;
+        chiTietGui.push(`• [${maPhieu}] ${trangThaiHienTai} ➔ ${ketQuaGui.danhSachNhan.join(', ')}`);
       } else {
-        chiTietGui.push(`• Phiếu ${maPhieu}: Chưa tìm thấy email người nhận tương ứng trong bảng DANH_MUC_NHAN_VIEN.`);
+        chiTietGui.push(`• [${maPhieu}] Bỏ qua: ${ketQuaGui.lyDo}`);
       }
     }
   }
 
   if (soLuongDaGui === 0) {
     if (chiTietGui.length > 0) return chiTietGui.join('\n');
-    return '✅ Tất cả các phiếu hiện tại đều đã được gửi email trước đó, không có phiếu mới cần gửi.';
+    return '✅ Tất cả các phiếu hiện tại đều đã được gửi email trước đó, không có cập nhật mới.';
   }
 
   return `🎉 Đã gửi thành công ${soLuongDaGui} email:\n` + chiTietGui.join('\n');
 }
 
 /**
- * Xác định danh sách email người nhận theo đúng logic phân quyền
+ * XỬ LÝ GỬI EMAIL CHÍNH XÁC THEO 5 BƯỚC:
+ * 1. Chờ Kế toán duyệt -> Gửi Kế toán
+ * 2. Kế toán đã duyệt - Chờ trình Sếp -> Gửi Bạn phụ trách (gnasche.ai@gmail.com / TruongBoPhan)
+ * 3. Chờ Sếp duyệt -> Gửi Sếp (phuongnt.work28@gmail.com / GiamDoc)
+ * 4. Sếp đã duyệt - Chờ in phiếu -> Báo Bạn in phiếu & Kế toán chuẩn bị tiền
+ * 5. Chờ Kế toán xuất tiền -> Gửi Kế toán
+ * 6. Đã xuất tiền -> Gửi Nhân viên
+ * 7. Từ chối -> Gửi Nhân viên
  */
-function xacDinhDanhSachNguoiNhan(trangThai, emailNV, mapNV) {
-  var ds = [];
-  var thongTinNV = mapNV.thongTinTheoEmail[emailNV.toLowerCase()] || {};
-  var emailQuanLy = thongTinNV.emailQuanLy || '';
-
-  if (trangThai === 'Chờ Quản lý duyệt') {
-    // Ưu tiên 1: Gửi cho Quản lý trực tiếp của nhân viên đó
-    if (emailQuanLy && emailQuanLy.indexOf('@') !== -1) {
-      ds.push(emailQuanLy);
-    }
-    // Nếu chưa có quản lý riêng, gửi cho tất cả người có vai trò TruongBoPhan
-    if (ds.length === 0) {
-      ds = ds.concat(mapNV.danhSachTruongBoPhan);
-    }
-  }
-  else if (trangThai === 'Chờ Kế toán duyệt') {
-    // Gửi cho tất cả người có vai trò KeToan
-    ds = ds.concat(mapNV.danhSachKeToan);
-  }
-  else if (trangThai === 'Chờ Giám đốc duyệt') {
-    // Gửi cho tất cả người có vai trò GiamDoc
-    ds = ds.concat(mapNV.danhSachGiamDoc);
-  }
-  else if (trangThai === 'Đã duyệt - Chờ chi tiền') {
-    // Gửi cho Thủ quỹ/Kế toán để chi + gửi cho Nhân viên tạo phiếu
-    ds = ds.concat(mapNV.danhSachKeToan);
-    if (emailNV && emailNV.indexOf('@') !== -1) ds.push(emailNV);
-  }
-  else if (trangThai === 'Đã chi tiền' || trangThai === 'Từ chối' || trangThai === 'Đã quyết toán') {
-    // Gửi thông báo kết quả cho Nhân viên tạo phiếu
-    if (emailNV && emailNV.indexOf('@') !== -1) ds.push(emailNV);
-  }
-
-  return xoaEmailTrung(ds);
-}
-
-function taoTieuDeMail(trangThai, maPhieu, hoTenNV, soTien) {
-  var tienStr = formatVND(soTien);
-  if (trangThai === 'Chờ Quản lý duyệt') return `[Chờ Duyệt Cấp 1] ${hoTenNV} đề nghị tạm ứng ${tienStr} (${maPhieu})`;
-  if (trangThai === 'Chờ Kế toán duyệt') return `[Chờ Kế Toán Thẩm Định] Phiếu ${maPhieu} - ${hoTenNV} (${tienStr})`;
-  if (trangThai === 'Chờ Giám đốc duyệt') return `[Trình Ký Ban Giám Đốc] Đề nghị chuẩn chi tạm ứng ${maPhieu} - ${tienStr}`;
-  if (trangThai === 'Đã duyệt - Chờ chi tiền') return `[Đã Duyệt - Chờ Chi Tiền] Phiếu tạm ứng ${maPhieu} đã được Giám Đốc duyệt`;
-  if (trangThai === 'Đã chi tiền') return `[Đã Giải Ngân] Khoản tạm ứng ${tienStr} của ${hoTenNV} đã được xuất quỹ`;
-  if (trangThai === 'Từ chối') return `[Thông Báo Từ Chối] Phiếu đề nghị tạm ứng ${maPhieu}`;
-  if (trangThai === 'Đã quyết toán') return `[Hoàn Tất Quyết Toán] Hồ sơ tạm ứng ${maPhieu} đã đóng`;
-  return `[Thông Báo Tạm Ứng] Phiếu ${maPhieu} - ${trangThai}`;
-}
-
-function taoNoiDungHtmlEmail(trangThai, maPhieu, hoTenNV, boPhan, soTien, lyDo, hanQT, soTK, nganHang) {
+function xuLyGuiEmailQuyTrinhMoi(trangThai, maPhieu, emailNV, hoTenNV, boPhan, soTien, lyDo, hanQT, soTK, nganHang, mapNV) {
+  var dsEmailNhan = [];
+  var tieuDeMail = '';
+  var loiChao = '';
+  var thongDiep = '';
   var mauSac = '#2563eb';
-  if (trangThai.indexOf('Quản lý') !== -1) mauSac = '#d97706';
-  else if (trangThai.indexOf('Kế toán') !== -1) mauSac = '#7c3aed';
-  else if (trangThai.indexOf('Giám đốc') !== -1) mauSac = '#4f46e5';
-  else if (trangThai.indexOf('Đã duyệt') !== -1 || trangThai.indexOf('Đã chi') !== -1) mauSac = '#059669';
-  else if (trangThai.indexOf('Từ chối') !== -1) mauSac = '#dc2626';
+  var tienStr = formatVND(soTien);
 
+  // BƯỚC 1: Nhân viên tạo phiếu -> Gửi Kế toán thẩm định
+  if (trangThai === 'Chờ Kế toán duyệt' || trangThai === 'Chờ Quản lý duyệt') {
+    dsEmailNhan = dsEmailNhan.concat(mapNV.danhSachKeToan);
+    tieuDeMail = `[Kế Toán Thẩm Định] Nhân viên ${hoTenNV} đề nghị tạm ứng ${tienStr} (${maPhieu})`;
+    loiChao = 'Kính gửi Bộ phận Kế toán,';
+    thongDiep = `Nhân viên <strong>${hoTenNV}</strong> vừa tạo giấy đề nghị tạm ứng số tiền <strong>${tienStr}</strong>. Kính đề nghị Kế toán kiểm tra chứng từ, định mức dự toán trước khi chuyển trình Sếp.`;
+    mauSac = '#7c3aed'; // Màu tím
+  }
+  // BƯỚC 2: Kế toán duyệt xong -> Gửi Bạn ("Tôi") để Trình Sếp
+  else if (trangThai === 'Kế toán đã duyệt - Chờ trình Sếp') {
+    dsEmailNhan = dsEmailNhan.concat(mapNV.danhSachTruongBoPhan);
+    tieuDeMail = `[Kế Toán Đã Duyệt] Cần Bạn trình Sếp phiếu tạm ứng ${maPhieu} - ${hoTenNV}`;
+    loiChao = 'Kính gửi Bạn phụ trách / Trưởng nhóm,';
+    thongDiep = `Kế toán đã kiểm tra và thẩm định xong phiếu tạm ứng của <strong>${hoTenNV}</strong> (${tienStr}). Vui lòng mở AppSheet bấm nút <strong>"🚀 Trình Sếp phê duyệt"</strong> để chuyển lên Ban Giám Đốc.`;
+    mauSac = '#d97706'; // Màu cam
+  }
+  // BƯỚC 3: Bạn bấm Trình Sếp -> Gửi Sếp (Giám đốc)
+  else if (trangThai === 'Chờ Sếp duyệt' || trangThai === 'Chờ Giám đốc duyệt') {
+    dsEmailNhan = dsEmailNhan.concat(mapNV.danhSachGiamDoc);
+    tieuDeMail = `[Trình Ký Ban Giám Đốc] Đề nghị Sếp duyệt tạm ứng ${tienStr} cho ${hoTenNV} (${maPhieu})`;
+    loiChao = 'Kính gửi Sếp (Ban Giám Đốc),';
+    thongDiep = `Hồ sơ tạm ứng của nhân viên <strong>${hoTenNV}</strong> đã được Kế toán thẩm định và trình lên Sếp. Kính mong Sếp xem xét và bấm phê duyệt trên AppSheet.`;
+    mauSac = '#4f46e5'; // Màu chàm
+  }
+  // BƯỚC 4: Sếp duyệt xong -> Báo Bạn in phiếu giấy & Kế toán chuẩn bị tiền
+  else if (trangThai === 'Sếp đã duyệt - Chờ in phiếu' || trangThai === 'Đã duyệt - Chờ chi tiền') {
+    dsEmailNhan = dsEmailNhan.concat(mapNV.danhSachTruongBoPhan); // Gửi Bạn để in phiếu
+    dsEmailNhan = dsEmailNhan.concat(mapNV.danhSachKeToan);       // Gửi Kế toán chuẩn bị quỹ
+    if (emailNV && emailNV.indexOf('@') !== -1) dsEmailNhan.push(emailNV); // Báo tin vui cho nhân viên
+    tieuDeMail = `[Sếp Đã Duyệt] Vui lòng in phiếu tạm ứng ${maPhieu} chuyển Kế toán xuất tiền`;
+    loiChao = 'Kính gửi Bạn phụ trách & Kế toán,';
+    thongDiep = `Sếp đã <strong>PHÊ DUYỆT</strong> khoản tạm ứng <strong>${tienStr}</strong> của ${hoTenNV}. Bạn hãy mở ứng dụng để in Phiếu Tạm Ứng (Mẫu 03-TT) chuyển sang phòng Kế toán để thực hiện xuất tiền.`;
+    mauSac = '#059669'; // Màu xanh lá
+  }
+  // BƯỚC 5A: Chờ Kế toán xuất tiền
+  else if (trangThai === 'Chờ Kế toán xuất tiền') {
+    dsEmailNhan = dsEmailNhan.concat(mapNV.danhSachKeToan);
+    tieuDeMail = `[Kế Toán Xuất Tiền] Đã nhận phiếu in ${maPhieu} - Xuất quỹ ${tienStr}`;
+    loiChao = 'Kính gửi Kế toán / Thủ quỹ,';
+    thongDiep = `Phiếu tạm ứng đã được trình Sếp duyệt và in phiếu xong. Kính đề nghị Kế toán thực hiện chi tiền mặt hoặc chuyển khoản cho nhân viên.`;
+    mauSac = '#0284c7'; // Xanh cyan
+  }
+  // BƯỚC 5B: Đã xuất tiền xong -> Báo Nhân viên nhận tiền
+  else if (trangThai === 'Đã xuất tiền' || trangThai === 'Đã chi tiền') {
+    if (emailNV && emailNV.indexOf('@') !== -1) dsEmailNhan.push(emailNV);
+    tieuDeMail = `[Đã Xuất Quỹ] Khoản tạm ứng ${tienStr} của bạn đã được chi tiền (${maPhieu})`;
+    loiChao = `Kính gửi Anh/Chị ${hoTenNV},`;
+    thongDiep = `Kế toán đã thực hiện xuất quỹ chi tiền tạm ứng cho Anh/Chị. Vui lòng kiểm tra tài khoản và lưu giữ đầy đủ hóa đơn chứng từ để quyết toán hoàn ứng đúng hạn (${hanQT}).`;
+    mauSac = '#16a34a';
+  }
+  // TỪ CHỐI
+  else if (trangThai === 'Từ chối') {
+    if (emailNV && emailNV.indexOf('@') !== -1) dsEmailNhan.push(emailNV);
+    tieuDeMail = `[Thông Báo Từ Chối] Phiếu đề nghị tạm ứng ${maPhieu} không được duyệt`;
+    loiChao = `Kính gửi Anh/Chị ${hoTenNV},`;
+    thongDiep = `Rất tiếc, phiếu đề nghị tạm ứng của Anh/Chị đã không được duyệt. Vui lòng kiểm tra lại lý do trên AppSheet hoặc liên hệ quản lý.`;
+    mauSac = '#dc2626'; // Màu đỏ
+  }
+  // ĐÃ QUYẾT TOÁN HOÀN ỨNG
+  else if (trangThai === 'Đã quyết toán') {
+    if (emailNV && emailNV.indexOf('@') !== -1) dsEmailNhan.push(emailNV);
+    tieuDeMail = `[Hoàn Tất Quyết Toán] Hồ sơ tạm ứng ${maPhieu} đã đóng thành công`;
+    loiChao = `Kính gửi Anh/Chị ${hoTenNV},`;
+    thongDiep = `Kế toán đã xác nhận hoàn tất hồ sơ quyết toán hoàn ứng cho phiếu ${maPhieu}. Công nợ tạm ứng đã được tất toán.`;
+    mauSac = '#16a34a';
+  }
+
+  dsEmailNhan = xoaEmailTrung(dsEmailNhan);
+
+  if (dsEmailNhan.length === 0) {
+    return { thanhCong: false, lyDo: 'Chưa tìm thấy email tương ứng trong DANH_MUC_NHAN_VIEN.' };
+  }
+
+  var htmlContent = taoGiaoDienHtmlChuan(
+    loiChao, thongDiep, maPhieu, hoTenNV, boPhan, soTien, lyDo, hanQT, soTK, nganHang, trangThai, mauSac
+  );
+
+  var soGui = 0;
+  for (var k = 0; k < dsEmailNhan.length; k++) {
+    var targetEmail = dsEmailNhan[k];
+    try {
+      GmailApp.sendEmail(targetEmail, tieuDeMail, '', {
+        htmlBody: htmlContent,
+        name: TEN_CONG_TY
+      });
+      Logger.log(`✅ [GỬI THÀNH CÔNG] ${maPhieu} -> ${targetEmail}`);
+      soGui++;
+    } catch (err) {
+      Logger.log(`❌ [LỖI GỬI] ${targetEmail}: ${err.toString()}`);
+    }
+  }
+
+  return { thanhCong: (soGui > 0), soNguoiNhan: soGui, danhSachNhan: dsEmailNhan };
+}
+
+/**
+ * Giao diện Email HTML chuyên nghiệp
+ */
+function taoGiaoDienHtmlChuan(loiChao, thongDiep, maPhieu, hoTenNV, boPhan, soTien, lyDo, hanQT, soTK, nganHang, trangThai, mauSac) {
   return `
     <div style="font-family: 'Segoe UI', Tahoma, Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
       <div style="background: ${mauSac}; padding: 20px; text-align: center; color: #ffffff;">
@@ -262,8 +319,8 @@ function taoNoiDungHtmlEmail(trangThai, maPhieu, hoTenNV, boPhan, soTien, lyDo, 
         <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">${APP_NAME}</p>
       </div>
       <div style="padding: 24px; color: #334155; font-size: 14px; line-height: 1.6;">
-        <p style="margin-top: 0; font-size: 15px;">Kính gửi Anh/Chị,</p>
-        <p>Hệ thống có thông báo cập nhật phiếu tạm ứng như sau:</p>
+        <p style="margin-top: 0; font-size: 15px;">${loiChao}</p>
+        <p style="margin: 10px 0 16px 0;">${thongDiep}</p>
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
           <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
             <tr><td style="padding: 6px 0; color: #64748b; width: 40%;">Mã phiếu:</td><td style="padding: 6px 0; font-weight: 700; color: #0f172a; font-size: 15px;">${maPhieu}</td></tr>
@@ -272,11 +329,11 @@ function taoNoiDungHtmlEmail(trangThai, maPhieu, hoTenNV, boPhan, soTien, lyDo, 
             <tr><td style="padding: 6px 0; color: #64748b;">Lý do tạm ứng:</td><td style="padding: 6px 0;">${lyDo}</td></tr>
             <tr><td style="padding: 6px 0; color: #64748b;">Hạn hoàn ứng:</td><td style="padding: 6px 0; font-weight: 600; color: #d97706;">${hanQT}</td></tr>
             ${soTK ? `<tr><td style="padding: 6px 0; color: #64748b;">Tài khoản nhận:</td><td style="padding: 6px 0;">${soTK} - ${nganHang}</td></tr>` : ''}
-            <tr><td style="padding: 6px 0; color: #64748b;">Trạng thái:</td><td style="padding: 6px 0;"><span style="display: inline-block; padding: 3px 10px; background: #e0f2fe; color: #0369a1; border-radius: 9999px; font-weight: 700; font-size: 12px;">${trangThai}</span></td></tr>
+            <tr><td style="padding: 6px 0; color: #64748b;">Trạng thái hiện tại:</td><td style="padding: 6px 0;"><span style="display: inline-block; padding: 3px 10px; background: #e0f2fe; color: #0369a1; border-radius: 9999px; font-weight: 700; font-size: 12px;">${trangThai}</span></td></tr>
           </table>
         </div>
         <p style="text-align: center; margin-top: 20px;">
-          <em>Vui lòng mở ứng dụng <strong>AppSheet</strong> trên điện thoại hoặc máy tính để phê duyệt / kiểm tra phiếu.</em>
+          <em>Vui lòng mở ứng dụng <strong>AppSheet</strong> trên điện thoại hoặc máy tính để xử lý bước tiếp theo.</em>
         </p>
       </div>
       <div style="background: #f1f5f9; padding: 14px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
@@ -328,7 +385,7 @@ function layBanDoNhanVien(sheetNV) {
         emailQuanLy: emailQuanLy
       };
 
-      if (vaiTro === 'TruongBoPhan') map.danhSachTruongBoPhan.push(email);
+      if (vaiTro === 'TruongBoPhan' || vaiTro === 'QuanLy') map.danhSachTruongBoPhan.push(email);
       if (vaiTro === 'KeToan') map.danhSachKeToan.push(email);
       if (vaiTro === 'GiamDoc') map.danhSachGiamDoc.push(email);
     }
@@ -421,7 +478,7 @@ function guiEmailTestNgayLapTuc() {
         htmlBody: `
           <div style="font-family: Arial, sans-serif; max-width: 500px; padding: 20px; border: 2px solid #10b981; border-radius: 10px;">
             <h2 style="color: #059669; margin-top: 0;">🎉 CHÚC MỪNG BẠN!</h2>
-            <p>Hệ thống gửi email tự động đang <strong>hoạt động hoàn hảo 100%</strong>.</p>
+            <p>Hệ thống gửi email tự động theo đúng quy trình 5 bước đang <strong>hoạt động hoàn hảo 100%</strong>.</p>
             <p>Email này được gửi trực tiếp từ máy chủ Google đến: <strong>${emailNhan}</strong>.</p>
           </div>
         `,
@@ -451,9 +508,9 @@ function chanDoanChiTietHeThong() {
   else {
     var mapNV = layBanDoNhanVien(sheetNV);
     msg += '✅ Sheet DANH_MUC_NHAN_VIEN:\n';
-    msg += '  • Trưởng phòng: ' + mapNV.danhSachTruongBoPhan.join(', ') + '\n';
-    msg += '  • Kế toán: ' + mapNV.danhSachKeToan.join(', ') + '\n';
-    msg += '  • Giám đốc: ' + mapNV.danhSachGiamDoc.join(', ') + '\n';
+    msg += '  • Bạn ("Tôi" - Trình Sếp / Trưởng bộ phận): ' + mapNV.danhSachTruongBoPhan.join(', ') + '\n';
+    msg += '  • Kế toán (Duyệt & Chi tiền): ' + mapNV.danhSachKeToan.join(', ') + '\n';
+    msg += '  • Sếp (Ban Giám Đốc phê duyệt): ' + mapNV.danhSachGiamDoc.join(', ') + '\n';
   }
 
   var triggers = ScriptApp.getProjectTriggers();
@@ -524,7 +581,104 @@ function dinhDangGiaoDienTrangTinh() {
   SpreadsheetApp.getUi().alert('✅ Đã định dạng!');
 }
 
+/**
+ * Xuất Mẫu In Phiếu Tạm Ứng chuẩn Mẫu 03-TT
+ */
 function xuatMauInPhieuHienTai() {
-  SpreadsheetApp.getUi().alert('Chức năng in phiếu sẵn sàng.');
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('PHIEU_TAM_UNG');
+  if (!sheet) return;
+
+  var activeRow = sheet.getActiveCell().getRow();
+  if (activeRow < 2) {
+    SpreadsheetApp.getUi().alert('⚠️ Vui lòng nhấp chọn vào dòng phiếu bạn muốn in trước!');
+    return;
+  }
+
+  var row = sheet.getRange(activeRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var maPhieu = row[0] || 'Chưa có';
+  var ngayDeNghi = Utilities.formatDate(new Date(row[1] || new Date()), 'GMT+7', 'dd/MM/yyyy');
+  var hoTen = row[3] || '';
+  var boPhan = row[4] || '';
+  var chucVu = row[5] || '';
+  var soTien = Number(row[6] || 0);
+  var soTienChu = row[7] || docSoThanhChu(soTien);
+  var lyDo = row[8] || '';
+  var hanQT = row[9] ? Utilities.formatDate(new Date(row[9]), 'GMT+7', 'dd/MM/yyyy') : '';
+  var hinhThuc = row[10] || 'Chuyển khoản';
+  var soTK = row[11] || '';
+  var nganHang = row[12] || '';
+  var trangThai = row[15] || '';
+
+  var htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <style>
+        body { font-family: 'Times New Roman', serif; font-size: 13pt; margin: 25px; line-height: 1.5; color: #000; }
+        .header-table { width: 100%; margin-bottom: 10px; }
+        .title { text-align: center; margin: 20px 0 10px 0; }
+        .title h2 { margin: 0; font-size: 18pt; text-transform: uppercase; font-weight: bold; }
+        .info-row { margin: 8px 0; }
+        .signature-table { width: 100%; margin-top: 35px; text-align: center; }
+        .signature-table td { vertical-align: top; width: 25%; padding: 5px; }
+        .signature-title { font-weight: bold; font-size: 12pt; }
+        .signature-space { height: 65px; }
+        @media print {
+          .no-print { display: none; }
+          body { margin: 10mm; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="no-print" style="margin-bottom: 15px; text-align: right;">
+        <span style="display: inline-block; padding: 4px 10px; border-radius: 4px; border: 1px solid #1a365d; font-weight: bold; color: #1a365d;">Trạng thái: ${trangThai}</span>
+        <button onclick="window.print()" style="padding: 8px 16px; background: #0066cc; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px;">
+          🖨️ In Phiếu / Xuất PDF
+        </button>
+      </div>
+
+      <table class="header-table">
+        <tr>
+          <td style="width: 60%;">
+            <strong>${TEN_CONG_TY}</strong><br>
+            <span>Địa chỉ: ${DIA_CHI_CONG_TY}</span><br>
+            <span>Bộ phận: <strong>${boPhan}</strong></span>
+          </td>
+          <td style="width: 40%; text-align: center;">
+            <strong>Mẫu số 03 - TT</strong><br>
+            <span style="font-size: 10pt; font-style: italic;">(Ban hành theo Thông tư 200/2014/TT-BTC)</span><br>
+            <span style="font-weight: bold; font-size: 11pt;">Số: ${maPhieu}</span>
+          </td>
+        </tr>
+      </table>
+
+      <div class="title">
+        <h2>PHIẾU TẠM ỨNG</h2>
+        <p>Ngày ${ngayDeNghi.split('/')[0]} tháng ${ngayDeNghi.split('/')[1]} năm ${ngayDeNghi.split('/')[2]}</p>
+      </div>
+
+      <div class="info-row">- Họ và tên người đề nghị: <strong>${hoTen}</strong></div>
+      <div class="info-row">- Bộ phận (Phòng ban): <strong>${boPhan}</strong> &nbsp;&nbsp;&nbsp;&nbsp; - Chức vụ: <strong>${chucVu}</strong></div>
+      <div class="info-row">- Số tiền tạm ứng: <strong style="font-size: 14pt; color: #b91c1c;">${formatVND(soTien)}</strong></div>
+      <div class="info-row">- Viết bằng chữ: <em>${soTienChu}</em></div>
+      <div class="info-row">- Lý do tạm ứng: ${lyDo}</div>
+      <div class="info-row">- Thời hạn thanh toán hoàn ứng: <strong>${hanQT}</strong></div>
+      <div class="info-row">- Hình thức nhận: <strong>${hinhThuc}</strong> ${soTK ? `(STK: ${soTK} - ${nganHang})` : ''}</div>
+
+      <table class="signature-table">
+        <tr>
+          <td><div class="signature-title">Giám đốc (Sếp)</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${row[22] ? row[22].split('@')[0] : ''}</strong></td>
+          <td><div class="signature-title">Kế toán trưởng</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${row[19] ? row[19].split('@')[0] : ''}</strong></td>
+          <td><div class="signature-title">Người trình duyệt</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${row[16] ? row[16].split('@')[0] : ''}</strong></td>
+          <td><div class="signature-title">Người đề nghị</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${hoTen}</strong></td>
+        </tr>
+      </table>
+    </body>
+    </html>
+  `;
+
+  var htmlOutput = HtmlService.createHtmlOutput(htmlContent).setWidth(900).setHeight(700).setTitle('In Phiếu Tạm Ứng - ' + maPhieu);
+  SpreadsheetApp.getUi().showModalDialog(htmlOutput, '🖨️ In Phiếu Tạm Ứng: ' + maPhieu);
 }
-function kiemTraPhieuQuaHanHangNgay() {}
