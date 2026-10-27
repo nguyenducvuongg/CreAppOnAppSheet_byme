@@ -1,114 +1,146 @@
-# HƯỚNG DẪN CẤU HÌNH APPSHEET: QUẢN LÝ & KÝ DUYỆT PHIẾU TẠM ỨNG
-### (Quy trình thực tế: Nhân viên ➔ Kế toán duyệt ➔ Bạn trình Sếp ➔ Sếp duyệt ➔ Bạn in phiếu đưa Kế toán xuất tiền)
-
-Tài liệu này chuẩn hóa 100% theo đúng quy trình vận hành thực tế tại doanh nghiệp của bạn.
+# HƯỚNG DẪN CẤU HÌNH BẢNG TÍNH & APPSHEET TINH GỌN DOANH NGHIỆP
+### (Tối ưu cho Quy trình 5 bước: Nhân viên ➔ Kế toán duyệt ➔ Bạn trình Sếp ➔ Sếp duyệt ➔ Bạn in phiếu đưa Kế toán xuất tiền)
 
 ---
 
-## 📑 MỤC LỤC
-1. [Sơ đồ Luồng duyệt 5 bước](#1-sơ-đồ-luồng-duyệt-5-bước)
-2. [Phần 1: Cấu hình Bảng `PHIEU_TAM_UNG` & Danh mục Trạng thái](#phần-1-cấu-hình-bảng-phieu_tam_ung--danh-mục-trạng-thái)
-3. [Phần 2: Thiết lập Phân quyền Người dùng theo Vai trò](#phần-2-thiết-lập-phân-quyền-người-dùng-theo-vai-trò)
-4. [Phần 3: Cấu hình 6 Nút bấm Phê duyệt (Actions)](#phần-3-cấu-hình-6-nút-bấm-phê-duyệt-actions)
-5. [Phần 4: Thiết lập Bộ lọc hiển thị (Slices) theo từng vai trò](#phần-4-thiết-lập-bộ-lọc-hiển-thị-slices-theo-từng-vai-trò)
-6. [Phần 5: Thiết kế Giao diện người dùng (UX Views)](#phần-5-thiết-kế-giao-diện-người-dùng-ux-views)
-7. [Phần 6: Tự động gửi Email thông báo qua Google Apps Script](#phần-6-tự-động-gửi-email-thông-báo-qua-google-apps-script)
+## 🚀 CÁCH KHỞI TẠO BẢNG TÍNH NHANH NHẤT (1 CÚ CLICK)
+
+Nếu bạn vừa tạo 1 file Google Sheets mới hoặc muốn chuẩn hóa lại bảng tính hiện tại mà không phải gõ tay từng tên cột:
+1. Mở file Google Sheets của bạn.
+2. Vào **Tiện ích mở rộng (Extensions)** ➔ **Apps Script**.
+3. Dán toàn bộ nội dung từ file [`Code.gs`](./Code.gs) vào và bấm **Lưu (Save)**.
+4. Tải lại trang Google Sheet (F5) ➔ Trên thanh menu sẽ xuất hiện: **`💰 Quản Lý Phiếu Tạm Ứng`**.
+5. Nhấp chọn: **`🛠️ Khởi tạo / Tinh gọn 4 Sheet Chuẩn Doanh Nghiệp`**.
+6. Hệ thống sẽ tự động tạo đủ 4 Tab dữ liệu chuẩn với tiêu đề Navy chuyên nghiệp, đóng băng dòng 1, định dạng số tiền VND, và nạp sẵn dữ liệu mẫu!
 
 ---
 
-## 1. SƠ ĐỒ LUỒNG DUYỆT 5 BƯỚC
+## 📊 CẤU TRÚC 4 SHEET ĐÃ TINH GỌN CHO DOANH NGHIỆP
 
-```mermaid
-flowchart TD
-    A([1. Nhân viên lập phiếu tạm ứng]) -->|Nộp đơn| B[Trạng thái: 'Chờ Kế toán duyệt']
-    
-    subgraph B1 [BƯỚC 1: KẾ TOÁN THẨM ĐỊNH]
-        B --> K1{Kế toán kiểm tra chứng từ}
-        K1 -->|Kế toán duyệt| C[Trạng thái: 'Kế toán đã duyệt - Chờ trình Sếp']
-        K1 -->|Từ chối| RJ([Trạng thái: 'Từ chối'])
-    end
+Hệ thống được tổ chức thành **4 Tab (Trang tính)** trong cùng 1 file Google Spreadsheet:
 
-    subgraph B2 [BƯỚC 2: BẠN TRÌNH SẾP]
-        C --> T1{Bạn kiểm tra hồ sơ}
-        T1 -->|Bạn bấm Trình Sếp| D[Trạng thái: 'Chờ Sếp duyệt']
-    end
+### 1. Sheet `PHIEU_TAM_UNG` (Bảng chính - Quản lý phiếu và lịch sử phê duyệt)
+Bao gồm 35 cột được chia thành các nhóm nghiệp vụ rõ ràng:
 
-    subgraph B3 [BƯỚC 3: SẾP PHÊ DUYỆT]
-        D --> S1{Sếp xem xét chuẩn chi}
-        S1 -->|Sếp phê duyệt| E[Trạng thái: 'Sếp đã duyệt - Chờ in phiếu']
-        S1 -->|Từ chối| RJ
-    end
-
-    subgraph B4 [BƯỚC 4: IN PHIẾU & XUẤT TIỀN]
-        E --> T2[Bạn bấm In Phiếu 03-TT đưa Kế toán]
-        T2 -->|Bạn bấm Đã chuyển KT| F[Trạng thái: 'Chờ Kế toán xuất tiền']
-        F --> K2[Kế toán chi tiền mặt / VietQR]
-        K2 -->|Kế toán bấm Xác nhận| G[Trạng thái: 'Đã xuất tiền']
-    end
-
-    subgraph B5 [BƯỚC 5: QUYẾT TOÁN HOÀN ỨNG]
-        G --> H[Nhân viên nộp hóa đơn đỏ / chứng từ]
-        H --> End([Trạng thái: 'Đã quyết toán'])
-    end
-```
+| Nhóm nghiệp vụ | Tên cột trên Google Sheet | Kiểu dữ liệu AppSheet | Ý nghĩa & Ghi chú |
+| :--- | :--- | :--- | :--- |
+| **Thông tin phiếu** | `MaPhieu` | `Text` (Key) | Mã phiếu dạng `TU2610-0001` (Tự sinh) |
+| | `NgayDeNghi` | `Date` | Ngày làm đơn (Mặc định `TODAY()`) |
+| | `EmailNhanVien` | `Ref` ➔ `DANH_MUC_NHAN_VIEN` | Email người xin tạm ứng (`USEREMAIL()`) |
+| | `HoTenNhanVien` | `Text` | Tên nhân viên (Formula: `[EmailNhanVien].[HoTen]`) |
+| | `BoPhan` | `Text` | Phòng ban (Formula: `[EmailNhanVien].[BoPhan]`) |
+| | `ChucVu` | `Text` | Chức vụ (Formula: `[EmailNhanVien].[ChucVu]`) |
+| | `HangMucChi` | `Ref` ➔ `DANH_MUC_HANG_MUC` | Phân loại chi phí (Công tác phí, Tiếp khách,...) |
+| | `SoTienTamUng` | `Price` | **Nhân viên tự nhập số tiền cần tạm ứng** |
+| | `SoTienBangChu` | `Text` | Số tiền viết bằng chữ (Tự động chuyển đổi) |
+| | `LyDoTamUng` | `LongText` | Mục đích xin tạm ứng |
+| | `HanQuyetToan` | `Date` | Thời hạn cam kết nộp hóa đơn hoàn ứng |
+| | `HinhThucNhan` | `Enum` | `Chuyển khoản` hoặc `Tiền mặt` |
+| | `SoTaiKhoan` | `Text` | Số tài khoản nhận tiền |
+| | `NganHang` | `Text` | Tên ngân hàng |
+| | `ChuTaiKhoan` | `Text` | Tên chủ tài khoản |
+| | `ChungTuDinhKem` | `File` / `Image` | Báo giá, kế hoạch công tác kèm theo |
+| | `TrangThai` | `Enum` | Trạng thái phiếu (Ẩn trên Form, đổi qua nút bấm) |
+| **BƯỚC 1: Kế toán duyệt** | `KeToanDuyet` | `Email` | Email kế toán thẩm định |
+| | `NgayKeToanDuyet` | `DateTime` | Thời điểm kế toán duyệt |
+| | `NhanXetKeToan` | `Text` | Nhận xét kiểm tra định mức hồ sơ |
+| **BƯỚC 2: Tôi trình Sếp** | `NguoiTrinh` | `Email` | Email Bạn (Trưởng bộ phận) phụ trách |
+| | `NgayTrinh` | `DateTime` | Thời điểm Bạn bấm chuyển Sếp |
+| | `GhiChuTrinh` | `Text` | Ý kiến đề xuất gửi Sếp |
+| **BƯỚC 3: Sếp phê duyệt** | `SepDuyet` | `Email` | Email Sếp (Ban Giám Đốc) |
+| | `NgaySepDuyet` | `DateTime` | Thời điểm Sếp phê duyệt |
+| | `NhanXetSep` | `Text` | Ý kiến chỉ đạo của Sếp |
+| **BƯỚC 4: Kế toán xuất tiền** | `NgayChiTien` | `Date` | Ngày kế toán xuất quỹ / chuyển khoản |
+| | `NguoiChiTien` | `Text` / `Email` | Thủ quỹ / Kế toán viên chi tiền |
+| | `ChungTuChi` | `File` / `Image` | Ủy nhiệm chi ngân hàng hoặc Phiếu chi tiền mặt |
+| **BƯỚC 5: Quyết toán hoàn ứng**| `NgayQuyetToan` | `Date` | Ngày nhân viên nộp hóa đơn quyết toán |
+| | `SoTienThucChi` | `Price` | Tổng số tiền chi thực tế theo hóa đơn VAT |
+| | `TienThuaThieu` | `Price` | Số tiền nhân viên nộp lại quỹ hoặc được chi thêm |
+| | `ChungTuQuyetToan` | `File` / `Image` | Hóa đơn đỏ VAT, vé tàu xe thực tế |
+| | `GhiChuQuyetToan` | `Text` | Ghi chú hoàn tất quyết toán |
+| **Hệ thống tự động** | `TrangThaiDaGuiMail` | `Text` | Lưu vết trạng thái đã gửi mail (chống gửi trùng) |
 
 ---
 
-## PHẦN 1: CẤU HÌNH BẢNG `PHIEU_TAM_UNG` & DANH MỤC TRẠNG THÁI
+### 2. Sheet `CHI_TIET_TAM_UNG` (Bảng phụ - Dự toán chi tiết bóc tách)
+Dùng khi một khoản tạm ứng lớn cần liệt kê chi tiết nhiều khoản mục nhỏ (ví dụ đi công tác 5 triệu gồm: Vé xe 600k, Khách sạn 1tr4, Ăn uống 1tr5, Tiếp khách 1tr5):
+- `ID`: Mã dòng chi tiết (Key - `Text`, Initial: `UNIQUEID()`)
+- `MaPhieu`: `Ref` ➔ `PHIEU_TAM_UNG` (IsPartOf: TRUE)
+- `HangMucChi`: `Text` (Nội dung chi)
+- `SoTien`: `Price` (Số tiền của mục đó)
+- `GhiChu`: `Text` (Ghi chú chi tiết)
 
-Vào mục **Data** ➔ Chọn bảng **`PHIEU_TAM_UNG`**:
+---
 
-### 1. Cột `TrangThai` (Trạng thái phiếu)
-- **Type**: `Enum`.
-- **Values** (Nhập đủ 7 giá trị theo quy trình):
-  1. `Chờ Kế toán duyệt` *(Giá trị mặc định ban đầu)*
-  2. `Kế toán đã duyệt - Chờ trình Sếp`
-  3. `Chờ Sếp duyệt`
-  4. `Sếp đã duyệt - Chờ in phiếu`
-  5. `Chờ Kế toán xuất tiền`
-  6. `Đã xuất tiền`
-  7. `Đã quyết toán`
-  8. `Từ chối`
-- **Initial value**: `"Chờ Kế toán duyệt"`.
-- **App Formula**: **ĐỂ TRỐNG HOÀN TOÀN**.
-- **Editable?**: **TICK CHỌN (TRUE)**.
-- **Để ẩn không cho nhân viên tự chọn trạng thái trong form tạo phiếu:**
-  - Bấm vào biểu tượng ✏️ bên cạnh `TrangThai` ➔ Cuộn xuống ô **`Show?`** ➔ Dán:
+### 3. Sheet `DANH_MUC_NHAN_VIEN` (Bảng danh bạ & Phân quyền vai trò)
+- `Email`: `Email` (Key) - Địa chỉ Gmail nhân viên dùng đăng nhập AppSheet
+- `HoTen`: `Text` - Họ và tên đầy đủ
+- `BoPhan`: `Enum` - Phòng ban (Kinh Doanh, Kỹ Thuật, Kế Toán, Hành Chính, Ban Giám Đốc)
+- `ChucVu`: `Text` - Chức danh công việc
+- `VaiTro`: `Enum` - Phân quyền hệ thống gồm 4 vai trò:
+  - `NhanVien`: Nhân viên lập phiếu đề nghị
+  - `KeToan`: Kế toán (Duyệt thẩm định & Xuất quỹ chi tiền)
+  - `TruongBoPhan` (hoặc `QuanLy`): Bạn ("Tôi") - Tiếp nhận phiếu đã soát, trình Sếp & in phiếu giấy
+  - `GiamDoc`: Sếp (Ban Giám Đốc phê duyệt chuẩn chi)
+- `SoTaiKhoan`: `Text` - Số tài khoản ngân hàng mặc định
+- `NganHang`: `Text` - Tên ngân hàng
+- `SoDienThoai`: `Phone` - Số điện thoại liên hệ
+- `TrangThai`: `Enum` (`Đang làm việc`, `Đã nghỉ việc`)
+
+---
+
+### 4. Sheet `DANH_MUC_HANG_MUC` (Khoản mục chi phí)
+- `MaHangMuc`: `Text` (Key - `HM01`, `HM02`,...)
+- `TenHangMuc`: `Text` (Công tác phí, Tiếp khách, Mua sắm vật tư, Sự kiện & Hội thảo, Phúc lợi & Công đoàn, Vận hành khác)
+- `MoTa`: `Text`
+
+---
+
+## 🛠️ CẤU HÌNH CHI TIẾT TRÊN APPSHEET
+
+### 1. Bảo vệ cột `TrangThai` (Không cho chỉnh sửa tự do khi tạo phiếu)
+- Vào **Data** ➔ Table **`PHIEU_TAM_UNG`** ➔ Cột **`TrangThai`**:
+  - **Type**: `Enum`.
+  - **Values**: Nhập 7 giá trị:
+    1. `Chờ Kế toán duyệt` *(Mặc định)*
+    2. `Kế toán đã duyệt - Chờ trình Sếp`
+    3. `Chờ Sếp duyệt`
+    4. `Sếp đã duyệt - Chờ in phiếu`
+    5. `Chờ Kế toán xuất tiền`
+    6. `Đã xuất tiền`
+    7. `Đã quyết toán`
+    8. `Từ chối`
+  - **Initial value**: `"Chờ Kế toán duyệt"`
+  - **App Formula**: **ĐỂ TRỐNG HOÀN TOÀN**
+  - **Editable?**: **TICK CHỌN (TRUE)**
+  - **Show?**: Bấm biểu tượng ✏️ ➔ Cuộn xuống ô `Show?` ➔ Nhập công thức:
     ```excel
     CONTEXT("ViewType") <> "Form"
     ```
-
-### 2. Cột `SoTienTamUng` (Số tiền tạm ứng - Nhân viên tự nhập)
-- **Type**: `Price`.
-- **App Formula**: **ĐỂ TRỐNG**.
-- **Editable?**: **TICK CHỌN (TRUE)** (để nhân viên tự điền số tiền xin).
-- **Require?**: **TICK CHỌN (TRUE)**.
-- **Valid_If**: `[_THIS] > 0`.
-- **Type Details**: `Currency symbol`: `₫` hoặc `VND`, `Decimal digits`: `0`.
+    *(Tác dụng: Ẩn cột này khi mở Form tạo/sửa phiếu, nhân viên không thể tự ý sửa trạng thái, nhưng các nút Actions vẫn hoạt động 100%).*
 
 ---
 
-## PHẦN 2: THIẾT LẬP PHÂN QUYỀN NGƯỜI DÙNG THEO VAI TRÒ
-
-Trong bảng **`DANH_MUC_NHAN_VIEN`**, thiết lập 3 vai trò chính:
-1. **`KeToan`**: Bộ phận Kế toán (Duyệt thẩm định bước 1 & Xuất quỹ bước 5). Ví dụ: `ducvuongggnguyen@gmail.com`.
-2. **`TruongBoPhan`** (hoặc `QuanLy`): Bạn ("Tôi") - Người tiếp nhận phiếu sau khi Kế toán duyệt để chuẩn bị trình Sếp và in phiếu. Ví dụ: `gnasche.ai@gmail.com`.
-3. **`GiamDoc`**: Sếp (Ban Giám Đốc phê duyệt). Ví dụ: `phuongnt.work28@gmail.com`.
-4. **`NhanVien`**: Nhân viên tạo phiếu đề nghị.
+### 2. Cột `SoTienTamUng` (Nhân viên tự nhập số tiền xin)
+- **Type**: `Price`
+- **App Formula**: **ĐỂ TRỐNG**
+- **Editable?**: **TICK CHỌN (TRUE)**
+- **Require?**: **TICK CHỌN (TRUE)**
+- **Valid_If**: `[_THIS] > 0`
 
 ---
 
-## PHẦN 3: CẤU HÌNH 6 NÚT BẤM PHÊ DUYỆT (ACTIONS)
+## 🎯 CẤU HÌNH 6 ACTIONS (NÚT BẤM DUYỆT THEO 5 BƯỚC)
 
-Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`**:
+Vào mục **Actions** ➔ Chọn Table **`PHIEU_TAM_UNG`**:
 
-### 🔹 Action 1: `Kế toán duyệt thẩm định`
+### 🔹 Action 1: Kế toán duyệt thẩm định
 - **Action name**: `KeToan_Duyet`
 - **Do this**: `Data: set the values of some columns in this row`
 - **Set these columns**:
   - `TrangThai` = `"Kế toán đã duyệt - Chờ trình Sếp"`
-  - `NguoiDuyetCap1` = `USEREMAIL()`
-  - `NgayDuyetCap1` = `NOW()`
+  - `KeToanDuyet` = `USEREMAIL()`
+  - `NgayKeToanDuyet` = `NOW()`
 - **Only if this condition is true**:
   ```excel
   AND(
@@ -119,15 +151,17 @@ Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`
     )
   )
   ```
-- **Appearance**: Display name: `📋 Kế toán duyệt`, Icon: `clipboard-check`.
+- **Appearance**: Display: `📋 Kế toán duyệt`, Icon: `clipboard-check`.
 
 ---
 
-### 🔹 Action 2: `Trình Sếp phê duyệt` (Dành cho Bạn - "Tôi")
+### 🔹 Action 2: Trình Sếp phê duyệt (Dành cho Bạn - "Tôi")
 - **Action name**: `Toi_Trinh_Sep`
 - **Do this**: `Data: set the values of some columns in this row`
 - **Set these columns**:
   - `TrangThai` = `"Chờ Sếp duyệt"`
+  - `NguoiTrinh` = `USEREMAIL()`
+  - `NgayTrinh` = `NOW()`
 - **Only if this condition is true**:
   ```excel
   AND(
@@ -139,17 +173,17 @@ Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`
     )
   )
   ```
-- **Appearance**: Display name: `🚀 Trình Sếp phê duyệt`, Icon: `paper-plane`.
+- **Appearance**: Display: `🚀 Trình Sếp phê duyệt`, Icon: `paper-plane`.
 
 ---
 
-### 🔹 Action 3: `Sếp phê duyệt` (Dành cho Sếp)
+### 🔹 Action 3: Sếp phê duyệt (Dành cho Sếp)
 - **Action name**: `Sep_Phe_Duyet`
 - **Do this**: `Data: set the values of some columns in this row`
 - **Set these columns**:
   - `TrangThai` = `"Sếp đã duyệt - Chờ in phiếu"`
-  - `NguoiDuyetCap2` = `USEREMAIL()`
-  - `NgayDuyetCap2` = `NOW()`
+  - `SepDuyet` = `USEREMAIL()`
+  - `NgaySepDuyet` = `NOW()`
 - **Only if this condition is true**:
   ```excel
   AND(
@@ -160,11 +194,11 @@ Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`
     )
   )
   ```
-- **Appearance**: Display name: `👑 Sếp phê duyệt`, Icon: `shield-check`.
+- **Appearance**: Display: `👑 Sếp phê duyệt`, Icon: `shield-check`.
 
 ---
 
-### 🔹 Action 4: `Đã in phiếu & Chuyển Kế toán` (Dành cho Bạn sau khi in)
+### 🔹 Action 4: Đã in phiếu & Chuyển Kế toán (Dành cho Bạn)
 - **Action name**: `Da_In_Chuyen_KeToan`
 - **Do this**: `Data: set the values of some columns in this row`
 - **Set these columns**:
@@ -179,11 +213,11 @@ Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`
     )
   )
   ```
-- **Appearance**: Display name: `🖨️ Đã in & Chuyển Kế toán`, Icon: `print`.
+- **Appearance**: Display: `🖨️ Đã in & Chuyển Kế toán`, Icon: `print`.
 
 ---
 
-### 🔹 Action 5: `Kế toán xác nhận đã xuất tiền` (Chi tiền)
+### 🔹 Action 5: Kế toán xác nhận xuất tiền
 - **Action name**: `KeToan_XuatTien`
 - **Do this**: `Data: set the values of some columns in this row`
 - **Set these columns**:
@@ -200,11 +234,11 @@ Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`
     )
   )
   ```
-- **Appearance**: Display name: `💵 Kế toán đã xuất tiền`, Icon: `cash-register`.
+- **Appearance**: Display: `💵 Kế toán đã xuất tiền`, Icon: `cash-register`.
 
 ---
 
-### 🔹 Action 6: `Từ chối phiếu` (Kế toán hoặc Sếp)
+### 🔹 Action 6: Từ chối phiếu (Kế toán hoặc Sếp)
 - **Action name**: `Tu_Choi_Phieu`
 - **Do this**: `Data: set the values of some columns in this row`
 - **Set these columns**:
@@ -219,15 +253,13 @@ Vào **Actions** (hoặc **Behaviors ➔ Actions**) ➔ Bảng **`PHIEU_TAM_UNG`
     )
   )
   ```
-- **Appearance**: Display name: `❌ Từ chối`, Color: Đỏ.
+- **Appearance**: Display: `❌ Từ chối`, Color: Đỏ.
 
 ---
 
-## PHẦN 4: THIẾT LẬP BỘ LỌC HIỂN THỊ (SLICES)
+## 🔍 THIẾT LẬP BỘ LỌC (SLICES) THEO TỪNG VAI TRÒ
 
-Tạo 2 Slices thông minh để mỗi người chỉ thấy đúng việc của mình:
-
-### 1. Slice: `Phieu_Cua_Toi` (Dành cho Nhân viên)
+### 1. Slice: `Phieu_Cua_Toi` (Nhân viên xem phiếu của chính mình)
 - **Table**: `PHIEU_TAM_UNG`
 - **Row filter condition**: `[EmailNhanVien] = USEREMAIL()`
 
@@ -236,7 +268,7 @@ Tạo 2 Slices thông minh để mỗi người chỉ thấy đúng việc của
 - **Row filter condition**:
   ```excel
   OR(
-    /* Kế toán thấy phiếu chờ thẩm định & chờ xuất tiền */
+    /* Kế toán thấy việc cần duyệt thẩm định & việc cần xuất tiền */
     AND(
       IN([TrangThai], LIST("Chờ Kế toán duyệt", "Chờ Kế toán xuất tiền")),
       LOOKUP(USEREMAIL(), "DANH_MUC_NHAN_VIEN", "Email", "VaiTro") = "KeToan"
@@ -249,41 +281,10 @@ Tạo 2 Slices thông minh để mỗi người chỉ thấy đúng việc của
         USEREMAIL() = "gnasche.ai@gmail.com"
       )
     ),
-    /* Sếp thấy phiếu đang chờ Sếp duyệt */
+    /* Sếp thấy phiếu đang chờ Sếp chuẩn chi */
     AND(
       [TrangThai] = "Chờ Sếp duyệt",
       LOOKUP(USEREMAIL(), "DANH_MUC_NHAN_VIEN", "Email", "VaiTro") = "GiamDoc"
     )
   )
   ```
-
----
-
-## PHẦN 5: THIẾT KẾ GIAO DIỆN NGƯỜI DÙNG (UX VIEWS)
-
-1. **View 1: `Phiếu của tôi`**: Data chọn Slice `Phieu_Cua_Toi`, Type: `deck`.
-2. **View 2: `Cần tôi xử lý`** (Kèm Badge số đếm):
-   - Data chọn Slice `Can_Toi_Xu_Ly`.
-   - Display Name:
-     ```excel
-     IF(
-       COUNT(Can_Toi_Xu_Ly[MaPhieu]) > 0,
-       CONCATENATE("Cần xử lý (", COUNT(Can_Toi_Xu_Ly[MaPhieu]), ")"),
-       "Cần xử lý"
-     )
-     ```
-3. **View 3: `Tất cả phiếu`**: Data chọn Table `PHIEU_TAM_UNG`, Type: `table`.
-   - Group by: `TrangThai`.
-   - Show if: `LOOKUP(USEREMAIL(), "DANH_MUC_NHAN_VIEN", "Email", "VaiTro") <> "NhanVien"`.
-
----
-
-## PHẦN 6: TỰ ĐỘNG GỬI EMAIL THÔNG BÁO QUA GOOGLE APPS SCRIPT
-
-Toàn bộ việc gửi email được xử lý tự động trong tệp [`Code.gs`](./Code.gs):
-- **Nhân viên tạo phiếu** ➔ Gửi mail Kế toán (`ducvuongggnguyen@gmail.com`).
-- **Kế toán duyệt** ➔ Gửi mail cho Bạn (`gnasche.ai@gmail.com`) báo trình Sếp.
-- **Bạn bấm Trình Sếp** ➔ Gửi mail cho Sếp (`phuongnt.work28@gmail.com`).
-- **Sếp duyệt** ➔ Gửi mail cho Bạn báo in phiếu & Kế toán chuẩn bị tiền.
-- **Kế toán xuất tiền** ➔ Gửi mail báo Nhân viên tiền đã về tài khoản.
-- Không cần Deploy AppSheet, hoàn toàn miễn phí 100%!

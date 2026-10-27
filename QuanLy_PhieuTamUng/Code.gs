@@ -1,13 +1,14 @@
 /**
  * =========================================================================
- * GOOGLE APPS SCRIPT - HỆ THỐNG GỬI EMAIL TỰ ĐỘNG THEO ĐÚNG QUY TRÌNH THỰC TẾ
+ * GOOGLE APPS SCRIPT - HỆ THỐNG QUẢN LÝ PHIẾU TẠM ỨNG & GỬI EMAIL DOANH NGHIỆP
  * =========================================================================
- * QUY TRÌNH DUYỆT 5 BƯỚC:
- * 1. Nhân viên lập phiếu -> Gửi Kế toán kiểm tra (Chờ Kế toán duyệt)
- * 2. Kế toán duyệt -> Gửi Bạn phụ trách để trình Sếp (Kế toán đã duyệt - Chờ trình Sếp)
- * 3. Bạn bấm Trình Sếp -> Gửi Sếp xem xét (Chờ Sếp duyệt)
- * 4. Sếp phê duyệt -> Báo Bạn in phiếu giấy Mẫu 03-TT đưa Kế toán (Sếp đã duyệt - Chờ in phiếu)
- * 5. Bạn chuyển Kế toán -> Kế toán xuất tiền mặt / chuyển khoản (Đã xuất tiền)
+ * QUY TRÌNH DUYỆT 5 BƯỚC THỰC TẾ:
+ * 1. Nhân viên lập phiếu ➔ Chờ Kế toán duyệt (Gửi email Kế toán thẩm định)
+ * 2. Kế toán duyệt ➔ Kế toán đã duyệt - Chờ trình Sếp (Gửi email Bạn để trình Sếp)
+ * 3. Bạn bấm Trình Sếp ➔ Chờ Sếp duyệt (Gửi email Sếp/Ban Giám Đốc)
+ * 4. Sếp phê duyệt ➔ Sếp đã duyệt - Chờ in phiếu (Báo Bạn in Mẫu 03-TT đưa Kế toán)
+ * 5. Kế toán xuất tiền ➔ Đã xuất tiền (Báo Nhân viên nhận tiền tạm ứng)
+ * 6. Nhân viên nộp hóa đơn ➔ Đã quyết toán hoàn ứng
  * =========================================================================
  */
 
@@ -16,29 +17,31 @@ var DIA_CHI_CONG_TY = "Tầng 5, Tòa nhà Innovation, TP. Hồ Chí Minh";
 var APP_NAME = "Hệ Thống Phê Duyệt Phiếu Tạm Ứng";
 
 /**
- * Menu chức năng trên Google Sheet
+ * Tạo Menu chức năng chuyên nghiệp trên Google Sheets
  */
 function onOpen() {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('💰 Quản Lý Phiếu Tạm Ứng')
-    .addItem('🚀 QUÉT & GỬI EMAIL NGAY CHO CÁC PHIẾU ĐANG CHỜ', 'chayGuiEmailNgayLapTuc')
     .addItem('⚡ Kích Hoạt Tự Động Gửi Email (Khi AppSheet Lưu)', 'caiDatTriggerTuDong')
+    .addItem('🚀 QUÉT & GỬI EMAIL NGAY CHO CÁC PHIẾU ĐANG CHỜ', 'chayGuiEmailNgayLapTuc')
+    .addSeparator()
+    .addItem('🛠️ Khởi tạo / Tinh gọn 4 Sheet Chuẩn Doanh Nghiệp', 'khoiTaoToanBoHeThongSheetDoanhNghiep')
+    .addItem('🎨 Chuẩn hóa màu sắc & Định dạng bảng tính', 'dinhDangGiaoDienTrangTinh')
     .addSeparator()
     .addItem('🧪 Test gửi 1 email thử nghiệm (Nhập email bất kỳ)', 'guiEmailTestNgayLapTuc')
-    .addItem('🔍 Chẩn đoán chi tiết hệ thống & Email người nhận', 'chanDoanChiTietHeThong')
+    .addItem('🔍 Chẩn đoán chi tiết hệ thống & Email nhân sự', 'chanDoanChiTietHeThong')
     .addSeparator()
-    .addItem('🖨️ Xuất mẫu in Phiếu đang chọn (Mẫu 03-TT)', 'xuatMauInPhieuHienTai')
-    .addItem('🎨 Định dạng bảng tính đẹp', 'dinhDangGiaoDienTrangTinh')
+    .addItem('🖨️ In Phiếu Đang Chọn (Mẫu 03-TT BTC)', 'xuatMauInPhieuHienTai')
     .addToUi();
 }
 
 /**
- * Cài đặt Trigger tự động onChange khi AppSheet lưu dữ liệu
+ * Cài đặt Trigger tự động onChange khi AppSheet thêm hoặc cập nhật dòng
  */
 function caiDatTriggerTuDong() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   
-  // Xóa trigger cũ
+  // Xóa trigger cũ để tránh trùng lặp
   var triggers = ScriptApp.getProjectTriggers();
   for (var i = 0; i < triggers.length; i++) {
     var fn = triggers[i].getHandlerFunction();
@@ -53,23 +56,23 @@ function caiDatTriggerTuDong() {
     .onChange()
     .create();
 
-  // Quét gửi ngay
+  // Quét gửi ngay lập tức
   var ketQua = xuLyKiemTraVaGuiEmail(false);
   
   SpreadsheetApp.getUi().alert(
-    '🎉 ĐÃ KÍCH HOẠT QUY TRÌNH GỬI EMAIL TỰ ĐỘNG THÀNH CÔNG!\n\n' +
+    '🎉 ĐÃ KÍCH HOẠT TỰ ĐỘNG GỬI EMAIL THÀNH CÔNG!\n\n' +
     'Quy trình vận hành:\n' +
     '1. Nvien tạo phiếu ➔ Gửi Kế toán\n' +
     '2. Kế toán duyệt ➔ Gửi Bạn để Trình Sếp\n' +
     '3. Bạn Trình Sếp ➔ Gửi Sếp\n' +
-    '4. Sếp duyệt ➔ Báo Bạn in phiếu đưa Kế toán\n' +
+    '4. Sếp duyệt ➔ Báo Bạn in phiếu chuyển Kế toán\n' +
     '5. Kế toán xuất tiền ➔ Báo Nhân viên nhận tiền\n\n' +
-    'Kết quả quét hiện tại:\n' + ketQua
+    'Kết quả quét:\n' + ketQua
   );
 }
 
 /**
- * Hàm trigger ngầm khi có thay đổi từ AppSheet
+ * Trigger ngầm khi có thay đổi từ AppSheet
  */
 function xuLyKhiCoThayDoi(e) {
   try {
@@ -85,7 +88,7 @@ function xuLyKhiCoThayDoi(e) {
  */
 function chayGuiEmailNgayLapTuc() {
   var ketQua = xuLyKiemTraVaGuiEmail(true);
-  SpreadsheetApp.getUi().alert('📋 KẾT QUẢ QUÉT & GỬI EMAIL THEO QUY TRÌNH MỚI:\n\n' + ketQua);
+  SpreadsheetApp.getUi().alert('📋 KẾT QUẢ QUÉT & GỬI EMAIL THEO QUY TRÌNH:\n\n' + ketQua);
 }
 
 /**
@@ -112,7 +115,7 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
     if (hName) colMap[hName] = c + 1;
   }
 
-  // Tự động tạo cột TrangThaiDaGuiMail nếu chưa có
+  // Tự động nhận diện hoặc thêm cột TrangThaiDaGuiMail
   var colGuiMail = colMap['TrangThaiDaGuiMail'];
   if (!colGuiMail) {
     var newColIdx = sheetPhieu.getLastColumn() + 1;
@@ -124,19 +127,21 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
     colMap['TrangThaiDaGuiMail'] = newColIdx;
   }
 
-  // Lấy vị trí cột
-  var colMaPhieu = colMap['MaPhieu'] || 1;
-  var colEmailNV = colMap['EmailNhanVien'] || 3;
-  var colHoTenNV = colMap['HoTenNhanVien'] || 4;
-  var colBoPhan = colMap['BoPhan'] || 5;
-  var colSoTien = colMap['SoTienTamUng'] || 7;
-  var colLyDo = colMap['LyDoTamUng'] || 9;
-  var colHanQT = colMap['HanQuyetToan'] || 10;
-  var colSoTK = colMap['SoTaiKhoan'] || 12;
-  var colNganHang = colMap['NganHang'] || 13;
-  var colTrangThai = colMap['TrangThai'] || 16;
+  // Lấy vị trí cột linh hoạt (tương thích cả tên cột mới và cũ)
+  var colMaPhieu   = colMap['MaPhieu'] || 1;
+  var colEmailNV   = colMap['EmailNhanVien'] || 3;
+  var colHoTenNV   = colMap['HoTenNhanVien'] || 4;
+  var colBoPhan    = colMap['BoPhan'] || 5;
+  var colHangMuc   = colMap['HangMucChi'] || 7;
+  var colSoTien    = colMap['SoTienTamUng'] || 8;
+  var colLyDo      = colMap['LyDoTamUng'] || 10;
+  var colHanQT     = colMap['HanQuyetToan'] || 11;
+  var colHinhThuc  = colMap['HinhThucNhan'] || 12;
+  var colSoTK      = colMap['SoTaiKhoan'] || 13;
+  var colNganHang  = colMap['NganHang'] || 14;
+  var colTrangThai = colMap['TrangThai'] || 17;
 
-  // Lấy danh bạ email
+  // Lấy danh bạ email nhân sự
   var mapNV = layBanDoNhanVien(sheetNV);
 
   // Đọc dữ liệu
@@ -161,7 +166,7 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
     var trangThaiHienTai = (row[colTrangThai - 1] || '').toString().trim();
     var trangThaiDaGui = (row[colGuiMail - 1] || '').toString().trim();
 
-    // Nếu trạng thái chưa gửi mail
+    // Nếu trạng thái phiếu đã thay đổi so với trạng thái đã gửi email
     if (trangThaiHienTai !== '' && trangThaiHienTai !== trangThaiDaGui) {
       var ketQuaGui = xuLyGuiEmailQuyTrinhMoi(
         trangThaiHienTai, 
@@ -204,6 +209,7 @@ function xuLyKiemTraVaGuiEmail(laThuCong) {
  * 5. Chờ Kế toán xuất tiền -> Gửi Kế toán
  * 6. Đã xuất tiền -> Gửi Nhân viên
  * 7. Từ chối -> Gửi Nhân viên
+ * 8. Đã quyết toán -> Gửi Nhân viên
  */
 function xuLyGuiEmailQuyTrinhMoi(trangThai, maPhieu, emailNV, hoTenNV, boPhan, soTien, lyDo, hanQT, soTK, nganHang, mapNV) {
   var dsEmailNhan = [];
@@ -318,33 +324,68 @@ function taoGiaoDienHtmlChuan(loiChao, thongDiep, maPhieu, hoTenNV, boPhan, soTi
         <h2 style="margin: 0; font-size: 18px; font-weight: 700;">${TEN_CONG_TY}</h2>
         <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.9;">${APP_NAME}</p>
       </div>
-      <div style="padding: 24px; color: #334155; font-size: 14px; line-height: 1.6;">
-        <p style="margin-top: 0; font-size: 15px;">${loiChao}</p>
-        <p style="margin: 10px 0 16px 0;">${thongDiep}</p>
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 13.5px;">
-            <tr><td style="padding: 6px 0; color: #64748b; width: 40%;">Mã phiếu:</td><td style="padding: 6px 0; font-weight: 700; color: #0f172a; font-size: 15px;">${maPhieu}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Người đề nghị:</td><td style="padding: 6px 0; font-weight: 600;">${hoTenNV} (${boPhan})</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Số tiền tạm ứng:</td><td style="padding: 6px 0; font-weight: 800; color: #b91c1c; font-size: 17px;">${formatVND(soTien)}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Lý do tạm ứng:</td><td style="padding: 6px 0;">${lyDo}</td></tr>
-            <tr><td style="padding: 6px 0; color: #64748b;">Hạn hoàn ứng:</td><td style="padding: 6px 0; font-weight: 600; color: #d97706;">${hanQT}</td></tr>
-            ${soTK ? `<tr><td style="padding: 6px 0; color: #64748b;">Tài khoản nhận:</td><td style="padding: 6px 0;">${soTK} - ${nganHang}</td></tr>` : ''}
-            <tr><td style="padding: 6px 0; color: #64748b;">Trạng thái hiện tại:</td><td style="padding: 6px 0;"><span style="display: inline-block; padding: 3px 10px; background: #e0f2fe; color: #0369a1; border-radius: 9999px; font-weight: 700; font-size: 12px;">${trangThai}</span></td></tr>
+
+      <div style="padding: 24px; color: #334155; line-height: 1.6;">
+        <p style="font-size: 15px; margin-top: 0;">${loiChao}</p>
+        <p style="font-size: 14px; margin-bottom: 20px;">${thongDiep}</p>
+
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr>
+              <td style="padding: 6px 0; color: #64748b; width: 140px;">Mã phiếu:</td>
+              <td style="padding: 6px 0; font-weight: 700; color: #0f172a;">${maPhieu}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Người đề nghị:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${hoTenNV} (${boPhan})</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Số tiền tạm ứng:</td>
+              <td style="padding: 6px 0; font-weight: 700; color: #dc2626; font-size: 15px;">${formatVND(soTien)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Lý do tạm ứng:</td>
+              <td style="padding: 6px 0; color: #334155;">${lyDo}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Hạn quyết toán:</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #0f172a;">${hanQT}</td>
+            </tr>
+            ${soTK ? `
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Thông tin chuyển khoản:</td>
+              <td style="padding: 6px 0; color: #0f172a;">STK <strong>${soTK}</strong> - ${nganHang}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="padding: 6px 0; color: #64748b;">Trạng thái hiện tại:</td>
+              <td style="padding: 6px 0;">
+                <span style="background: ${mauSac}; color: #ffffff; padding: 3px 8px; border-radius: 4px; font-weight: 600; font-size: 12px;">
+                  ${trangThai}
+                </span>
+              </td>
+            </tr>
           </table>
         </div>
-        <p style="text-align: center; margin-top: 20px;">
-          <em>Vui lòng mở ứng dụng <strong>AppSheet</strong> trên điện thoại hoặc máy tính để xử lý bước tiếp theo.</em>
-        </p>
+
+        <div style="text-align: center; margin: 25px 0;">
+          <p style="font-size: 13px; color: #64748b; margin-bottom: 8px;">Vui lòng truy cập ứng dụng AppSheet để xử lý bước tiếp theo:</p>
+          <a href="https://www.appsheet.com" style="display: inline-block; background: ${mauSac}; color: #ffffff; text-decoration: none; padding: 12px 28px; border-radius: 6px; font-weight: 600; font-size: 14px;">
+            Mở Ứng Dụng AppSheet
+          </a>
+        </div>
       </div>
-      <div style="background: #f1f5f9; padding: 14px; text-align: center; font-size: 12px; color: #64748b; border-top: 1px solid #e2e8f0;">
-        Email tự động từ Hệ thống Quản Lý & Phê Duyệt Phiếu Tạm Ứng - ${TEN_CONG_TY}
+
+      <div style="background: #f1f5f9; padding: 16px; text-align: center; font-size: 12px; color: #94a3b8; border-top: 1px solid #e2e8f0;">
+        <p style="margin: 0;">Email được gửi tự động từ hệ thống quản lý tạm ứng của công ty.</p>
+        <p style="margin: 4px 0 0 0;">${DIA_CHI_CONG_TY}</p>
       </div>
     </div>
   `;
 }
 
 /**
- * Đọc bảng DANH_MUC_NHAN_VIEN
+ * Lấy danh bạ nhân sự và nhóm email theo vai trò
  */
 function layBanDoNhanVien(sheetNV) {
   var lastRow = sheetNV.getLastRow();
@@ -363,11 +404,11 @@ function layBanDoNhanVien(sheetNV) {
     colMap[(headerRange[c] || '').toString().trim()] = c;
   }
 
-  var cEmail = colMap['Email'] !== undefined ? colMap['Email'] : 0;
-  var cHoTen = colMap['HoTen'] !== undefined ? colMap['HoTen'] : 1;
-  var cBoPhan = colMap['BoPhan'] !== undefined ? colMap['BoPhan'] : 2;
-  var cVaiTro = colMap['VaiTro'] !== undefined ? colMap['VaiTro'] : 4;
-  var cEmailQL = colMap['EmailQuanLyTrucTiep'] !== undefined ? colMap['EmailQuanLyTrucTiep'] : 7;
+  var cEmail   = colMap['Email'] !== undefined ? colMap['Email'] : 0;
+  var cHoTen   = colMap['HoTen'] !== undefined ? colMap['HoTen'] : 1;
+  var cBoPhan  = colMap['BoPhan'] !== undefined ? colMap['BoPhan'] : 2;
+  var cChucVu  = colMap['ChucVu'] !== undefined ? colMap['ChucVu'] : 3;
+  var cVaiTro  = colMap['VaiTro'] !== undefined ? colMap['VaiTro'] : 4;
 
   var data = sheetNV.getRange(2, 1, lastRow - 1, sheetNV.getLastColumn()).getValues();
   for (var i = 0; i < data.length; i++) {
@@ -375,14 +416,12 @@ function layBanDoNhanVien(sheetNV) {
     var hoTen = data[i][cHoTen];
     var boPhan = data[i][cBoPhan];
     var vaiTro = (data[i][cVaiTro] || '').toString().trim();
-    var emailQuanLy = (data[i][cEmailQL] || '').toString().trim().toLowerCase();
 
     if (email && email.indexOf('@') !== -1) {
       map.thongTinTheoEmail[email] = {
         hoTen: hoTen,
         boPhan: boPhan,
-        vaiTro: vaiTro,
-        emailQuanLy: emailQuanLy
+        vaiTro: vaiTro
       };
 
       if (vaiTro === 'TruongBoPhan' || vaiTro === 'QuanLy') map.danhSachTruongBoPhan.push(email);
@@ -408,7 +447,7 @@ function xoaEmailTrung(arr) {
 }
 
 /**
- * Tự động kiểm tra dòng mới thiếu Số tiền bằng chữ hoặc mã phiếu
+ * Tự động điền Số tiền bằng chữ & Mã phiếu khi nhân viên thêm dòng
  */
 function tuDongDienSoTienBangChuVaMaPhieu() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -421,9 +460,10 @@ function tuDongDienSoTienBangChuVaMaPhieu() {
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var colMa = -1, colTien = -1, colChu = -1;
   for (var c = 0; c < headers.length; c++) {
-    if (headers[c] === 'MaPhieu') colMa = c + 1;
-    if (headers[c] === 'SoTienTamUng') colTien = c + 1;
-    if (headers[c] === 'SoTienBangChu') colChu = c + 1;
+    var h = (headers[c] || '').toString().trim();
+    if (h === 'MaPhieu') colMa = c + 1;
+    if (h === 'SoTienTamUng') colTien = c + 1;
+    if (h === 'SoTienBangChu') colChu = c + 1;
   }
 
   if (colMa === -1 || colTien === -1 || colChu === -1) return;
@@ -447,6 +487,125 @@ function tuDongDienSoTienBangChuVaMaPhieu() {
     if (soTien && (!soTienChu || soTienChu.toString().trim() === '')) {
       sheet.getRange(i + 2, colChu).setValue(docSoThanhChu(Number(soTien)));
     }
+  }
+}
+
+/**
+ * KHỞI TẠO TOÀN BỘ 4 SHEET CHUẨN DOANH NGHIỆP VỚI 1 CÚ CLICK
+ */
+function khoiTaoToanBoHeThongSheetDoanhNghiep() {
+  var ui = SpreadsheetApp.getUi();
+  var confirm = ui.alert(
+    '🛠️ Khởi Tạo / Chuẩn Hóa Cấu Trúc Sheet Doanh Nghiệp',
+    'Thao tác này sẽ tự động tạo đủ 4 Tab dữ liệu chuẩn:\n' +
+    '1. PHIEU_TAM_UNG (35 cột chuẩn nghiệp vụ)\n' +
+    '2. CHI_TIET_TAM_UNG (Dự toán chi tiết)\n' +
+    '3. DANH_MUC_NHAN_VIEN (Phân quyền 4 vai trò)\n' +
+    '4. DANH_MUC_HANG_MUC (Khoản mục chi phí)\n\n' +
+    'Bạn có chắc chắn muốn tiến hành?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (confirm !== ui.Button.YES) return;
+
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. SHEET PHIEU_TAM_UNG
+  var headersPhieu = [
+    'MaPhieu', 'NgayDeNghi', 'EmailNhanVien', 'HoTenNhanVien', 'BoPhan', 'ChucVu', 'HangMucChi',
+    'SoTienTamUng', 'SoTienBangChu', 'LyDoTamUng', 'HanQuyetToan', 'HinhThucNhan', 'SoTaiKhoan',
+    'NganHang', 'ChuTaiKhoan', 'ChungTuDinhKem', 'TrangThai', 'KeToanDuyet', 'NgayKeToanDuyet',
+    'NhanXetKeToan', 'NguoiTrinh', 'NgayTrinh', 'GhiChuTrinh', 'SepDuyet', 'NgaySepDuyet',
+    'NhanXetSep', 'NgayChiTien', 'NguoiChiTien', 'ChungTuChi', 'NgayQuyetToan', 'SoTienThucChi',
+    'TienThuaThieu', 'ChungTuQuyetToan', 'GhiChuQuyetToan', 'TrangThaiDaGuiMail'
+  ];
+  taoHoacChuanHoaSheet(ss, 'PHIEU_TAM_UNG', headersPhieu);
+
+  // 2. SHEET CHI_TIET_TAM_UNG
+  var headersChiTiet = ['ID', 'MaPhieu', 'HangMucChi', 'SoTien', 'GhiChu'];
+  taoHoacChuanHoaSheet(ss, 'CHI_TIET_TAM_UNG', headersChiTiet);
+
+  // 3. SHEET DANH_MUC_NHAN_VIEN
+  var headersNV = ['Email', 'HoTen', 'BoPhan', 'ChucVu', 'VaiTro', 'SoTaiKhoan', 'NganHang', 'SoDienThoai', 'TrangThai'];
+  var sheetNV = taoHoacChuanHoaSheet(ss, 'DANH_MUC_NHAN_VIEN', headersNV);
+  if (sheetNV.getLastRow() <= 1) {
+    sheetNV.getRange(2, 1, 4, 9).setValues([
+      ['ducvuongnguyen098@gmail.com', 'Nguyễn Đức Vượng', 'Kinh Doanh', 'Chuyên viên kinh doanh', 'NhanVien', '19036888889999', 'Techcombank', '0912345678', 'Đang làm việc'],
+      ['ducvuongggnguyen@gmail.com', 'Bùi Thu Trang', 'Kế Toán', 'Kế toán trưởng', 'KeToan', '19028889990001', 'Techcombank', '0987654321', 'Đang làm việc'],
+      ['gnasche.ai@gmail.com', 'Vũ Đình Trọng', 'Kinh Doanh', 'Trưởng phòng Kinh Doanh', 'TruongBoPhan', '19031122334455', 'Techcombank', '0933112233', 'Đang làm việc'],
+      ['phuongnt.work28@gmail.com', 'Lê Hoàng Nam', 'Ban Giám Đốc', 'Tổng Giám Đốc', 'GiamDoc', '0011009999999', 'Vietcombank', '0909999999', 'Đang làm việc']
+    ]);
+  }
+
+  // 4. SHEET DANH_MUC_HANG_MUC
+  var headersHM = ['MaHangMuc', 'TenHangMuc', 'MoTa'];
+  var sheetHM = taoHoacChuanHoaSheet(ss, 'DANH_MUC_HANG_MUC', headersHM);
+  if (sheetHM.getLastRow() <= 1) {
+    sheetHM.getRange(2, 1, 6, 3).setValues([
+      ['HM01', 'Công tác phí', 'Vé máy bay, xe khách, tiền xăng, lưu trú, phụ cấp đi lại'],
+      ['HM02', 'Tiếp khách & Đối tác', 'Ăn uống hội họp trao đổi với khách hàng, đối tác'],
+      ['HM03', 'Mua sắm vật tư thiết bị', 'Linh kiện máy móc, văn phòng phẩm, công cụ làm việc'],
+      ['HM04', 'Sự kiện & Hội thảo', 'Thuê địa điểm, âm thanh, in ấn, quà tặng hội thảo'],
+      ['HM05', 'Phúc lợi & Công đoàn', 'Sinh nhật, ốm đau, hiếu hỷ, hoạt động nội bộ'],
+      ['HM06', 'Chi phí vận hành khác', 'Chi phí phát sinh đột xuất trong quá trình hoạt động']
+    ]);
+  }
+
+  // Định dạng lại giao diện
+  dinhDangGiaoDienTrangTinh();
+
+  ui.alert(
+    '🎉 ĐÃ KHỞI TẠO XONG CẤU TRÚC 4 SHEET DOANH NGHIỆP!\n\n' +
+    '✅ Đã chuẩn hóa tiêu đề và định dạng đẹp mắt.\n' +
+    '✅ Đã nạp sẵn danh bạ nhân sự mẫu với 4 vai trò.\n' +
+    '✅ Giờ bạn có thể kết nối AppSheet một cách mượt mà nhất!'
+  );
+}
+
+/**
+ * Hàm hỗ trợ tạo hoặc định dạng lại tiêu đề sheet
+ */
+function taoHoacChuanHoaSheet(ss, sheetName, headers) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+  }
+  // Ghi đè dòng tiêu đề 1
+  sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+  sheet.setFrozenRows(1);
+  return sheet;
+}
+
+/**
+ * Định dạng thẩm mỹ bảng tính
+ */
+function dinhDangGiaoDienTrangTinh() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheets = ss.getSheets();
+  
+  for (var i = 0; i < sheets.length; i++) {
+    var sh = sheets[i];
+    var lastCol = sh.getLastColumn();
+    if (lastCol > 0) {
+      // Header Navy chuyên nghiệp
+      sh.getRange(1, 1, 1, lastCol)
+        .setBackground('#1E3A8A')
+        .setFontColor('#FFFFFF')
+        .setFontWeight('bold')
+        .setHorizontalAlignment('center')
+        .setVerticalAlignment('middle');
+      sh.setRowHeight(1, 35);
+      sh.setFrozenRows(1);
+    }
+  }
+
+  // Định dạng tiền tệ và căn lề cho sheet PHIEU_TAM_UNG
+  var sheetPhieu = ss.getSheetByName('PHIEU_TAM_UNG');
+  if (sheetPhieu && sheetPhieu.getLastRow() >= 2) {
+    var rCount = sheetPhieu.getLastRow() - 1;
+    // Căn giữa các cột mã và ngày
+    sheetPhieu.getRange(2, 1, rCount, 2).setHorizontalAlignment('center');
+    sheetPhieu.getRange(2, 8, rCount, 1).setNumberFormat('#,##0" đ"').setFontWeight('bold').setFontColor('#DC2626');
   }
 }
 
@@ -500,7 +659,7 @@ function chanDoanChiTietHeThong() {
   var sheetPhieu = ss.getSheetByName('PHIEU_TAM_UNG');
   var sheetNV = ss.getSheetByName('DANH_MUC_NHAN_VIEN');
 
-  var msg = '🔍 KẾT QUẢ CHẨN ĐOÁN:\n\n';
+  var msg = '🔍 KẾT QUẢ CHẨN ĐOÁN HỆ THỐNG:\n\n';
   if (!sheetPhieu) msg += '❌ Không có sheet PHIEU_TAM_UNG\n';
   else msg += '✅ Sheet PHIEU_TAM_UNG: Có ' + (sheetPhieu.getLastRow() - 1) + ' dòng phiếu\n';
 
@@ -508,9 +667,9 @@ function chanDoanChiTietHeThong() {
   else {
     var mapNV = layBanDoNhanVien(sheetNV);
     msg += '✅ Sheet DANH_MUC_NHAN_VIEN:\n';
-    msg += '  • Bạn ("Tôi" - Trình Sếp / Trưởng bộ phận): ' + mapNV.danhSachTruongBoPhan.join(', ') + '\n';
-    msg += '  • Kế toán (Duyệt & Chi tiền): ' + mapNV.danhSachKeToan.join(', ') + '\n';
-    msg += '  • Sếp (Ban Giám Đốc phê duyệt): ' + mapNV.danhSachGiamDoc.join(', ') + '\n';
+    msg += '  • Bạn ("Tôi" - Trình Sếp / In phiếu): ' + (mapNV.danhSachTruongBoPhan.join(', ') || 'Chưa có') + '\n';
+    msg += '  • Kế toán (Thẩm định & Xuất quỹ): ' + (mapNV.danhSachKeToan.join(', ') || 'Chưa có') + '\n';
+    msg += '  • Sếp (Ban Giám Đốc phê duyệt): ' + (mapNV.danhSachGiamDoc.join(', ') || 'Chưa có') + '\n';
   }
 
   var triggers = ScriptApp.getProjectTriggers();
@@ -573,16 +732,8 @@ function docSoThanhChu(so) {
   return ketQua.replace(/\s+/g, ' ');
 }
 
-function dinhDangGiaoDienTrangTinh() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('PHIEU_TAM_UNG');
-  if (!sheet) return;
-  sheet.getRange(1, 1, 1, sheet.getLastColumn()).setBackground('#1A365D').setFontColor('#FFFFFF').setFontWeight('bold');
-  SpreadsheetApp.getUi().alert('✅ Đã định dạng!');
-}
-
 /**
- * Xuất Mẫu In Phiếu Tạm Ứng chuẩn Mẫu 03-TT
+ * Xuất Mẫu In Phiếu Tạm Ứng chuẩn Mẫu 03-TT BTC
  */
 function xuatMauInPhieuHienTai() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -595,26 +746,41 @@ function xuatMauInPhieuHienTai() {
     return;
   }
 
+  // Đọc header để map cột chính xác
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var colMap = {};
+  for (var c = 0; c < headers.length; c++) {
+    colMap[(headers[c] || '').toString().trim()] = c;
+  }
+
   var row = sheet.getRange(activeRow, 1, 1, sheet.getLastColumn()).getValues()[0];
-  var maPhieu = row[0] || 'Chưa có';
-  var ngayDeNghi = Utilities.formatDate(new Date(row[1] || new Date()), 'GMT+7', 'dd/MM/yyyy');
-  var hoTen = row[3] || '';
-  var boPhan = row[4] || '';
-  var chucVu = row[5] || '';
-  var soTien = Number(row[6] || 0);
-  var soTienChu = row[7] || docSoThanhChu(soTien);
-  var lyDo = row[8] || '';
-  var hanQT = row[9] ? Utilities.formatDate(new Date(row[9]), 'GMT+7', 'dd/MM/yyyy') : '';
-  var hinhThuc = row[10] || 'Chuyển khoản';
-  var soTK = row[11] || '';
-  var nganHang = row[12] || '';
-  var trangThai = row[15] || '';
+  var maPhieu    = row[colMap['MaPhieu'] !== undefined ? colMap['MaPhieu'] : 0] || 'Chưa có';
+  var ngayDeNghiVal = row[colMap['NgayDeNghi'] !== undefined ? colMap['NgayDeNghi'] : 1];
+  var ngayDeNghi = ngayDeNghiVal ? Utilities.formatDate(new Date(ngayDeNghiVal), 'GMT+7', 'dd/MM/yyyy') : Utilities.formatDate(new Date(), 'GMT+7', 'dd/MM/yyyy');
+  var hoTen      = row[colMap['HoTenNhanVien'] !== undefined ? colMap['HoTenNhanVien'] : 3] || '';
+  var boPhan     = row[colMap['BoPhan'] !== undefined ? colMap['BoPhan'] : 4] || '';
+  var chucVu     = row[colMap['ChucVu'] !== undefined ? colMap['ChucVu'] : 5] || '';
+  var soTien     = Number(row[colMap['SoTienTamUng'] !== undefined ? colMap['SoTienTamUng'] : 7] || 0);
+  var soTienChu  = row[colMap['SoTienBangChu'] !== undefined ? colMap['SoTienBangChu'] : 8] || docSoThanhChu(soTien);
+  var lyDo       = row[colMap['LyDoTamUng'] !== undefined ? colMap['LyDoTamUng'] : 9] || '';
+  var hanQTVal   = row[colMap['HanQuyetToan'] !== undefined ? colMap['HanQuyetToan'] : 10];
+  var hanQT      = hanQTVal ? Utilities.formatDate(new Date(hanQTVal), 'GMT+7', 'dd/MM/yyyy') : '';
+  var hinhThuc   = row[colMap['HinhThucNhan'] !== undefined ? colMap['HinhThucNhan'] : 11] || 'Chuyển khoản';
+  var soTK       = row[colMap['SoTaiKhoan'] !== undefined ? colMap['SoTaiKhoan'] : 12] || '';
+  var nganHang   = row[colMap['NganHang'] !== undefined ? colMap['NganHang'] : 13] || '';
+  var trangThai  = row[colMap['TrangThai'] !== undefined ? colMap['TrangThai'] : 16] || '';
+
+  // Người ký duyệt
+  var nguoiKeToan = row[colMap['KeToanDuyet'] || colMap['NguoiDuyetCap2'] || 17] || '';
+  var nguoiTrinh  = row[colMap['NguoiTrinh'] || colMap['NguoiDuyetCap1'] || 20] || '';
+  var nguoiSep    = row[colMap['SepDuyet'] || colMap['NguoiDuyetCap3'] || 23] || '';
 
   var htmlContent = `
     <!DOCTYPE html>
     <html>
     <head>
       <meta charset="utf-8">
+      <title>In Phiếu Tạm Ứng - ${maPhieu}</title>
       <style>
         body { font-family: 'Times New Roman', serif; font-size: 13pt; margin: 25px; line-height: 1.5; color: #000; }
         .header-table { width: 100%; margin-bottom: 10px; }
@@ -669,10 +835,30 @@ function xuatMauInPhieuHienTai() {
 
       <table class="signature-table">
         <tr>
-          <td><div class="signature-title">Giám đốc (Sếp)</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${row[22] ? row[22].split('@')[0] : ''}</strong></td>
-          <td><div class="signature-title">Kế toán trưởng</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${row[19] ? row[19].split('@')[0] : ''}</strong></td>
-          <td><div class="signature-title">Người trình duyệt</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${row[16] ? row[16].split('@')[0] : ''}</strong></td>
-          <td><div class="signature-title">Người đề nghị</div><div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div><div class="signature-space"></div><strong>${hoTen}</strong></td>
+          <td>
+            <div class="signature-title">Giám đốc (Sếp)</div>
+            <div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div>
+            <div class="signature-space"></div>
+            <strong>${nguoiSep ? nguoiSep.split('@')[0] : ''}</strong>
+          </td>
+          <td>
+            <div class="signature-title">Kế toán trưởng</div>
+            <div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div>
+            <div class="signature-space"></div>
+            <strong>${nguoiKeToan ? nguoiKeToan.split('@')[0] : ''}</strong>
+          </td>
+          <td>
+            <div class="signature-title">Người trình duyệt</div>
+            <div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div>
+            <div class="signature-space"></div>
+            <strong>${nguoiTrinh ? nguoiTrinh.split('@')[0] : ''}</strong>
+          </td>
+          <td>
+            <div class="signature-title">Người đề nghị</div>
+            <div style="font-size: 10pt; font-style: italic;">(Ký, họ tên)</div>
+            <div class="signature-space"></div>
+            <strong>${hoTen}</strong>
+          </td>
         </tr>
       </table>
     </body>

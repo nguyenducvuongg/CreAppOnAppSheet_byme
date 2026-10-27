@@ -1,53 +1,47 @@
-# 💼 DỰ ÁN NGHIÊN CỨU & PHÁT TRIỂN: HỆ THỐNG QUẢN LÝ & DUYỆT PHIẾU TẠM ỨNG CÔNG TY
+# 💼 HỆ THỐNG QUẢN LÝ & KÝ DUYỆT PHIẾU TẠM ỨNG DOANH NGHIỆP
+### (Tối ưu hóa bảng tính & Vận hành theo Quy trình thực tế 5 bước)
 
-Dự án cung cấp giải pháp toàn diện cho nghiệp vụ **Quản lý, Phê duyệt đa cấp và Thanh quyết toán hoàn ứng** cho doanh nghiệp, hỗ trợ triển khai linh hoạt trên cả **Google AppSheet + Google Apps Script** và **Ứng dụng Web Dashboard**.
+Hệ thống được thiết kế tinh gọn, chuẩn hóa theo thực tế vận hành doanh nghiệp Việt Nam và tuân thủ chế độ kế toán theo **Mẫu số 03 - TT (Thông tư 200/2014/TT-BTC & Thông tư 133/2016/TT-BTC)**.
 
 ---
 
-## 📂 Cấu trúc thư mục dự án
+## 🔄 QUY TRÌNH DUYỆT 5 BƯỚC THỰC TẾ
+```
+[1. Nhân viên lập đơn] ➔ [2. Kế toán duyệt] ➔ [3. Tôi trình Sếp] ➔ [4. Sếp duyệt] ➔ [5. Tôi in phiếu đưa KT xuất tiền] ➔ [6. Đã xuất tiền & Quyết toán]
+```
+
+1. **Bước 1 (Nhân viên)**: Nhân viên tạo giấy đề nghị tạm ứng, tự điền số tiền cần xin và đính kèm dự toán/kế hoạch.
+2. **Bước 2 (Kế toán)**: Kế toán thẩm định hồ sơ, kiểm tra định mức chi phí và bấm duyệt chuyển sang Bạn ("Tôi").
+3. **Bước 3 (Bạn phụ trách - "Tôi")**: Kiểm tra nội dung công việc và bấm **"🚀 Trình Sếp phê duyệt"**.
+4. **Bước 4 (Sếp - Ban Giám Đốc)**: Sếp xem xét trên điện thoại/máy tính và bấm phê duyệt chuẩn chi.
+5. **Bước 5 (Bạn phụ trách & Kế toán)**: Bạn bấm in **Phiếu Tạm Ứng (Mẫu 03-TT)** giấy chuyển sang phòng Kế toán. Kế toán thực hiện chi tiền mặt hoặc chuyển khoản ngân hàng.
+6. **Bước 6 (Hoàn ứng)**: Nhân viên đi công tác/mua sắm về nộp hóa đơn VAT để quyết toán tất toán tạm ứng.
+
+---
+
+## 📂 DANH MỤC CÁC TỆP TRONG DỰ ÁN
 
 ```
 QuanLy_PhieuTamUng/
-├── PHIEU_TAM_UNG.csv             # Cấu trúc bảng chính (Header thông tin phiếu)
-├── CHI_TIET_TAM_UNG.csv          # Bảng phụ (Chi tiết từng hạng mục chi phí dự toán)
-├── DANH_MUC_NHAN_VIEN.csv        # Danh mục nhân sự & phân quyền vai trò (Role-based)
-├── DANH_MUC_HANG_MUC.csv         # Danh mục phân loại chi phí (Công tác phí, Tiếp khách...)
-├── Code.gs                       # Mã nguồn Google Apps Script (Trigger, Email, In Mẫu 03-TT)
-├── HUONG_DAN_CAU_HINH_APPSHEET.md# Tài liệu hướng dẫn thiết lập chi tiết trên Google AppSheet
-├── index.html                    # Ứng dụng Web Prototype tương tác trực tiếp trên trình duyệt
-└── README.md                     # Tài liệu giới thiệu tổng quan dự án
+├── PHIEU_TAM_UNG.csv             # Bảng chính gồm 35 cột tinh gọn chuẩn nghiệp vụ
+├── CHI_TIET_TAM_UNG.csv          # Bảng phụ bóc tách các mục chi phí dự toán (Tùy chọn)
+├── DANH_MUC_NHAN_VIEN.csv        # Danh bạ nhân sự, phân quyền 4 vai trò & STK nhận tiền
+├── DANH_MUC_HANG_MUC.csv         # 6 Khoản mục chi phí chuẩn theo chế độ kế toán
+├── Code.gs                       # Kịch bản Apps Script gửi email tự động & 1-click tạo sheet
+├── HUONG_DAN_CAU_HINH_APPSHEET.md# Cẩm nang cấu hình Actions, Slices, Column Rules từ A-Z
+├── index.html                    # Ứng dụng Web tương tác mô phỏng 100% quy trình thực tế
+└── README.md                     # Tài liệu tổng quan
 ```
 
 ---
 
-## 🚀 Các tính năng chính
+## ⚡ KHỞI TẠO BẢNG TÍNH GOOGLE SHEETS TRONG 30 GIÂY
 
-### 1. Quy trình Phê duyệt đa cấp chuẩn mực
-- **Cấp 1 - Trưởng bộ phận**: Xét duyệt nhu cầu công tác / mua sắm theo đề xuất của nhân viên.
-- **Cấp 2 - Kế toán**: Thẩm định tính hợp lệ của hồ sơ, đối chiếu hạn mức ngân sách và tài khoản nhận tiền.
-- **Cấp 3 - Ban Giám Đốc**: Phê duyệt chuẩn chi ngân sách công ty.
-- **Giải ngân - Thủ quỹ**: Thực hiện chi tiền mặt hoặc chuyển khoản ngân hàng (hỗ trợ sinh mã QR VietQR tự động).
-- **Quyết toán - Hoàn ứng**: Nhân viên nộp chứng từ hóa đơn, hệ thống tự động tính chênh lệch thừa/thiếu để hoàn quỹ hoặc chi thêm.
-
-### 2. Tự động hóa thông minh (Automations & Apps Script)
-- **Đọc số tiền thành chữ**: Tự động chuyển đổi số tiền (ví dụ: `5.000.000` ➔ `Năm triệu đồng chẵn`).
-- **Gửi Email thông báo**: Tự động gửi email thông báo khi có phiếu cần duyệt, khi được duyệt hoặc bị từ chối.
-- **Cảnh báo quá hạn hoàn ứng**: Tự động quét hàng ngày và gửi email nhắc nhở nhân viên khi tới hạn mà chưa quyết toán.
-- **In Mẫu số 03-TT BTC**: Xuất phiếu in chuẩn quy định Bộ Tài Chính (Thông tư 200/2014/TT-BTC & TT 133/2016/TT-BTC).
-
----
-
-## 🖥️ Cách sử dụng nhanh
-
-### Tùy chọn 1: Trải nghiệm ngay Ứng dụng Web Prototype
-Mở tệp `index.html` trực tiếp trên bất kỳ trình duyệt nào (Chrome, Safari, Edge):
-- Chuyển đổi vai trò người dùng (Nhân viên, Trưởng phòng, Kế toán, Giám đốc) để thử nghiệm phân quyền.
-- Tạo phiếu đề nghị tạm ứng với nhiều hạng mục chi.
-- Bấm duyệt từng cấp, từ chối, giải ngân và quyết toán.
-- Bấm in phiếu chuẩn mẫu Mẫu 03-TT có xem trước bản in.
-
-### Tùy chọn 2: Triển khai trên Google AppSheet
-Xem chi tiết từng bước trong tệp [HUONG_DAN_CAU_HINH_APPSHEET.md](./HUONG_DAN_CAU_HINH_APPSHEET.md):
-1. Nhập 4 tệp CSV vào một Google Sheet mới.
-2. Dán mã nguồn từ [Code.gs](./Code.gs) vào **Extensions ➔ Apps Script**.
-3. Kết nối với **AppSheet** và cấu hình theo hướng dẫn.
+Không cần phải gõ tay hoặc import thủ công từng file CSV:
+1. Mở một Google Spreadsheet trống.
+2. Vào **Tiện ích mở rộng (Extensions)** ➔ **Apps Script**.
+3. Dán toàn bộ mã từ file [`Code.gs`](./Code.gs) vào và bấm **Lưu**.
+4. Tải lại trang Google Sheet (F5) ➔ Nhấp vào menu **`💰 Quản Lý Phiếu Tạm Ứng`** ➔ Chọn:
+   👉 **`🛠️ Khởi tạo / Tinh gọn 4 Sheet Chuẩn Doanh Nghiệp`**.
+5. Toàn bộ 4 tab (`PHIEU_TAM_UNG`, `CHI_TIET_TAM_UNG`, `DANH_MUC_NHAN_VIEN`, `DANH_MUC_HANG_MUC`) sẽ được tự động tạo lập, kẻ bảng, đóng băng dòng tiêu đề Navy sang trọng và nạp sẵn dữ liệu mẫu!
+6. Bấm tiếp: **`⚡ Kích Hoạt Tự Động Gửi Email (Khi AppSheet Lưu)`** để kích hoạt gửi email thông báo hoàn toàn miễn phí.
